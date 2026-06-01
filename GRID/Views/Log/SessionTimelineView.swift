@@ -118,39 +118,41 @@ struct SessionTimelineView: View {
     // MARK: - ヘッダー
 
     private var header: some View {
-        HStack {
-            Image(systemName: "calendar")
-                .font(.system(size: 22))
-                .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
-
-            Spacer()
-
+        ZStack {
             Text(headerTitle)
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundColor(.gridTextPrimary)
+                .frame(maxWidth: .infinity)
                 .animation(.none, value: currentIndex)
 
-            Spacer()
+            HStack {
+                Image(systemName: "calendar")
+                    .font(.system(size: 22))
+                    .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
 
-            if !isToday {
-                Button("Today") {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        currentIndex = todayIndex
-                    }
+                Spacer()
+
+                if !isToday {
+                    Button("Today") {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            currentIndex = todayIndex
+                        }
+                    }                          // ← Buttonここで閉じる
+                    .font(.gridBody)
+                    .foregroundColor(.gridTextPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                isPurple ? Color.white.opacity(0.4) : Color.gridTextSecondary.opacity(0.5),
+                                lineWidth: 1
+                            )
+                    )
+                } else {
+                    Color.clear
+                        .frame(width: 70, height: 32)
                 }
-                .font(.gridBody)
-                .foregroundColor(.gridTextPrimary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(
-                            isPurple ? Color.white.opacity(0.4) : Color.gridTextSecondary.opacity(0.5),
-                            lineWidth: 1
-                        )
-                )
-            } else {
-                Color.clear.frame(width: 70, height: 32)
             }
         }
         .padding(.horizontal, 24)
