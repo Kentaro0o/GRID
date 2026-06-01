@@ -1,0 +1,304 @@
+import SwiftUI
+
+struct AddItemView: View {
+    @EnvironmentObject var vm: AppViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @Binding var session: Session
+    let entryId: UUID
+
+    @State private var timerRunning = false
+    @State private var remainingSeconds: Int = 120
+    @State private var timer: Timer? = nil
+    @State private var totalSeconds: Int = 120
+
+    private var entryIndex: Int? {
+        session.entries.firstIndex { $0.id == entryId }
+    }
+
+    private var entry: WorkoutEntry? {
+        guard let i = entryIndex else { return nil }
+        return session.entries[i]
+    }
+
+    private var itemName: String {
+        entry.flatMap { vm.item(for: $0.itemId) }?.name ?? ""
+    }
+
+    var body: some View {
+        ZStack {
+            Color.gridBgPurple.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button {
+                        saveAndDismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.gridTextPrimary)
+                            .frame(width: 36, height: 36)
+                            .background(Color.gridCard)
+                            .clipShape(Circle())
+                    }
+                    Spacer()
+                    Text(itemName)
+                        .font(.gridHeadline)
+                        .foregroundColor(.gridTextPrimary)
+                    Spacer()
+                    Color.clear.frame(width: 36)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 60)
+                .padding(.bottom, 20)
+
+                // Sets list
+                ScrollView {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("セット")
+                                .font(.gridSmall)
+                                .foregroundColor(.gridTextSecondary)
+                                .kerning(1.2)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 10)
+
+                        if let idx = entryIndex {
+                            ForEach(Array(session.entries[idx].sets.enumerated()), id: \.element.id) { setIdx, _ in
+                                setRow(entryIdx: idx, setIdx: setIdx)
+                            }
+                        }
+
+                        // Add / Remove set buttons
+                        HStack(spacing: 16) {
+                            Spacer()
+                            Button {
+                                if let idx = entryIndex, session.entries[idx].sets.count > 1 {
+                                    session.entries[idx].sets.removeLast()
+                                }
+                            } label: {
+                                Image(systemName: "minus")
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.gridCard)
+                                    .clipShape(Circle())
+                                    .foregroundColor(.gridTextPrimary)
+                            }
+                            Button {
+                                if let idx = entryIndex {
+                                    let prev = session.entries[idx].sets.last
+                                    session.entries[idx].sets.append(
+                                        WorkoutSet(weight: prev?.weight ?? 0, reps: prev?.reps ?? 0)
+                                    )
+                                }
+                            } label: {
+                                Image(systemName: "plus")
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.gridCard)
+                                    .clipShape(Circle())
+                                    .foregroundColor(.gridTextPrimary)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+
+                        // Memo
+                        if let idx = entryIndex {
+                            TextEditor(text: $session.entries[idx].memo)
+                                .font(.gridBody)
+                                .foregroundColor(.gridTextPrimary)
+                                .frame(minHeight: 70)
+                                .padding(12)
+                                .scrollContentBackground(.hidden)
+                                .background(Color.gridCard)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    Group {
+                                        if session.entries[idx].memo.isEmpty {
+                                            Text("メモ")
+                                                .font(.gridBody)
+                                                .foregroundColor(.gridTextTertiary)
+                                                .padding(16)
+                                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                                .allowsHitTesting(false)
+                                        }
+                                    }
+                                )
+                                .padding(.horizontal, 24)
+                        }
+
+                        Spacer().frame(height: 20)
+                    }
+                }
+
+                // Timer panel
+                timerPanel
+            }
+        }
+        .onAppear {
+            if let item = entry.flatMap({ vm.item(for: $0.itemId) }) {
+                totalSeconds = item.restTimerSeconds
+                remainingSeconds = item.restTimerSeconds
+            }
+        }
+        .onDisappear {
+            timer?.invalidate()
+        }
+    }
+
+    // MARK: - Set row
+
+    private func setRow(entryIdx: Int, setIdx: Int) -> some View {
+        VStack(spacing: 0) {
+        HStack(spacing: 12) {
+            // Set number
+            Text("\(setIdx + 1)")
+                .font(.gridCaption)
+                .foregroundColor(.gridTextSecondary)
+                .frame(width: 20)
+
+            // Weight
+            HStack(spacing: 4) {
+                TextField("0", value: $session.entries[entryIdx].sets[setIdx].weight, format: .number)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 56)
+                    .padding(.vertical, 8)
+                    .background(Color.gridCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .font(.gridBody)
+                    .foregroundColor(.gridTextPrimary)
+                Text("Kg")
+                    .font(.gridCaption)
+                    .foregroundColor(.gridTextSecondary)
+            }
+
+            // Reps
+            HStack(spacing: 4) {
+                TextField("0", value: $session.entries[entryIdx].sets[setIdx].reps, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 44)
+                    .padding(.vertical, 8)
+                    .background(Color.gridCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .font(.gridBody)
+                    .foregroundColor(.gridTextPrimary)
+            }
+
+            // Delete
+            Button {
+                if session.entries[entryIdx].sets.count > 1 {
+                    session.entries[entryIdx].sets.remove(at: setIdx)
+                }
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gridTextTertiary)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 10)
+
+        Divider()
+            .background(Color.gridCardInner)
+            .padding(.horizontal, 24)
+        } // VStack
+    }
+
+    // MARK: - Timer panel
+
+    private var timerPanel: some View {
+        HStack(spacing: 24) {
+            // Reset
+            Button {
+                remainingSeconds = totalSeconds
+                stopTimer()
+            } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 18))
+                    .foregroundColor(timerRunning ? .white : .gridTextSecondary)
+            }
+
+            // Time display
+            Text(timeString(remainingSeconds))
+                .font(.system(size: 48, weight: .bold, design: .monospaced))
+                .foregroundColor(timerRunning ? .white : .gridTextPrimary)
+                .frame(maxWidth: .infinity)
+
+            // Play / Pause
+            Button {
+                timerRunning ? stopTimer() : startTimer()
+            } label: {
+                Image(systemName: timerRunning ? "pause.fill" : "play.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(timerRunning ? .white : .gridTextSecondary)
+                    .frame(width: 48, height: 48)
+                    .background(timerRunning ? Color.white.opacity(0.2) : Color.gridCard)
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.horizontal, 32)
+        .padding(.vertical, 24)
+        .background(
+            timerRunning
+                ? Color.gridAccent.opacity(0.25)
+                : Color.gridCard.opacity(0.6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 40)
+        .animation(.easeInOut(duration: 0.3), value: timerRunning)
+    }
+
+    // MARK: - Timer logic
+
+    private func startTimer() {
+        timerRunning = true
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            if remainingSeconds > 0 {
+                remainingSeconds -= 1
+            } else {
+                stopTimer()
+            }
+        }
+    }
+
+    private func stopTimer() {
+        timerRunning = false
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func timeString(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
+
+    private func saveAndDismiss() {
+        vm.updateSession(session)
+        dismiss()
+    }
+}
+
+
+#Preview {
+    let vm = AppViewModel()
+    var session = vm.ensureTodaySession()
+    let item = Item.defaults[0]
+    let entry = WorkoutEntry(
+        itemId: item.id,
+        sets: [
+            WorkoutSet(weight: 90, reps: 8),
+            WorkoutSet(weight: 90, reps: 8),
+            WorkoutSet(weight: 80, reps: 7),
+        ]
+    )
+    session.entries = [entry]
+    vm.updateSession(session)
+    return AddItemView(session: .constant(session), entryId: entry.id)
+        .environmentObject(vm)
+}
