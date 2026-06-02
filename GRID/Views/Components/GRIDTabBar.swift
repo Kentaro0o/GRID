@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum GRIDTab {
-    case log, items, system
+    case log, items, data, system
 }
 
 struct GRIDTabBar: View {
@@ -11,6 +11,7 @@ struct GRIDTabBar: View {
         HStack(spacing: 0) {
             tabItem(icon: "list.bullet.rectangle", label: "LOG",    tab: .log)
             tabItem(icon: "dumbbell",              label: "ITEMS",  tab: .items)
+            tabItem(icon: "chart.bar",             label: "DATA",   tab: .data)
             tabItem(icon: "gearshape",             label: "SYSTEM", tab: .system)
         }
         .padding(.horizontal, 16)

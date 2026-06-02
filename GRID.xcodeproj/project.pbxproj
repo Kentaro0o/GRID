@@ -25,12 +25,14 @@
 		9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECC8A5850629A6793508FB6 /* SystemView.swift */; };
 		B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */; };
 		C64120AAABA1534901C6654C /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B1C4ED818F8C451F3892BB /* Session.swift */; };
+		E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD33BF1B497BF634D49AA04 /* DataView.swift */; };
 		FB6990ED804B23F5F6222C34 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = B069E0AF5A06DBB6EAEBE9A1 /* Item.swift */; };
 		FE699E360B1371C9BFE8B91D /* WeightLineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */; };
 		FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4B10FD50A291D92412ACDF /* MainTabView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0AD33BF1B497BF634D49AA04 /* DataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataView.swift; sourceTree = "<group>"; };
 		1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightLineChart.swift; sourceTree = "<group>"; };
 		24929EE7E57DA81A00BED4A0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		29DAB92B22AF980D5B4C853B /* WorkoutEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEntry.swift; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
 			children = (
 				4F4B10FD50A291D92412ACDF /* MainTabView.swift */,
 				880BB3CB2050E604564D49E8 /* Components */,
+				548AE7CFF7265CCF6B952995 /* Data */,
 				871A4E33DD9EF98C1FEB103A /* Items */,
 				55C48680BA5795D4012960F4 /* Log */,
 				5578D37636F0EA9F2701CEC5 /* System */,
@@ -82,6 +85,14 @@
 				188D82747F882A661693482A /* Views */,
 			);
 			path = GRID;
+			sourceTree = "<group>";
+		};
+		548AE7CFF7265CCF6B952995 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				0AD33BF1B497BF634D49AA04 /* DataView.swift */,
+			);
+			path = Data;
 			sourceTree = "<group>";
 		};
 		5578D37636F0EA9F2701CEC5 /* System */ = {
@@ -252,6 +263,7 @@
 				080745117FB0E76EC0650FE9 /* AppViewModel.swift in Sources */,
 				14D248EB9923D13B6955401B /* CSVExporter.swift in Sources */,
 				5304E32AED34E3735BE53E00 /* Color+Theme.swift in Sources */,
+				E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */,
 				4B6937E7B8119910E76E85CE /* EditItemView.swift in Sources */,
 				B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */,
 				26BEA0BCB834FADA2EA7FA57 /* GRIDTabBar.swift in Sources */,

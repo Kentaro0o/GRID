@@ -50,7 +50,7 @@ struct AddItemView: View {
                     Color.clear.frame(width: 36)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 60)
+                .padding(.top, 52)
                 .padding(.bottom, 20)
 
                 // Sets list
@@ -112,7 +112,7 @@ struct AddItemView: View {
                                 .frame(minHeight: 70)
                                 .padding(12)
                                 .scrollContentBackground(.hidden)
-                                .background(Color.gridCard)
+                                .background(Color.gridCardInner)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     Group {
@@ -146,6 +146,7 @@ struct AddItemView: View {
         .onDisappear {
             timer?.invalidate()
         }
+        .navigationBarHidden(true)
     }
 
     // MARK: - Set row
@@ -212,6 +213,7 @@ struct AddItemView: View {
 
     private var timerPanel: some View {
         HStack(spacing: 24) {
+            
             // Reset
             Button {
                 remainingSeconds = totalSeconds
@@ -240,8 +242,10 @@ struct AddItemView: View {
                     .clipShape(Circle())
             }
         }
+        
         .padding(.horizontal, 32)
-        .padding(.vertical, 24)
+        .padding(.top, 24)
+        .padding(.bottom, 24)
         .background(
             timerRunning
                 ? Color.gridAccent.opacity(0.25)
@@ -249,7 +253,8 @@ struct AddItemView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .padding(.horizontal, 16)
-        .padding(.bottom, 40)
+        .padding(.top, 20)
+        .padding(.bottom, 20)
         .animation(.easeInOut(duration: 0.3), value: timerRunning)
     }
 

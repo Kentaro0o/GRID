@@ -12,6 +12,8 @@ struct MainTabView: View {
                     LogTabView()
                 case .items:
                     ViewItemView()
+                case .data:
+                    DataView()
                 case .system:
                     SystemView()
                 }

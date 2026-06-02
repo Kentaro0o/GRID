@@ -6,7 +6,7 @@ struct AddMenuView: View {
 
     @State private var session: Session
     @State private var showItemPicker = false
-    @State private var editingEntry: WorkoutEntry? = nil
+    @State private var navPath = NavigationPath()
 
     init(session: Session) {
         _session = State(initialValue: session)
@@ -21,6 +21,7 @@ struct AddMenuView: View {
     }
 
     var body: some View {
+        NavigationStack(path: $navPath) {
         ZStack {
             Color.gridBgPurple.ignoresSafeArea()
 
@@ -32,7 +33,7 @@ struct AddMenuView: View {
                             .font(.gridSmall)
                             .foregroundColor(.gridTextSecondary)
                             .kerning(1.5)
-                        Text("Today, \(session.fullDateString)")
+                        Text("今日 \(session.fullDateString)")
                             .font(.system(size: 22, weight: .bold))
                             .foregroundColor(.gridTextPrimary)
 
@@ -75,13 +76,13 @@ struct AddMenuView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "plus.circle")
-                        Text("Item")
+                        Text("種目を追加")
                             .font(.gridBody)
                     }
                     .foregroundColor(.gridTextPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color.gridCard)
+                    .background(Color.gridCardInner)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .padding(.horizontal, 24)
@@ -138,21 +139,23 @@ struct AddMenuView: View {
                 }
             }
         }
+        .navigationBarHidden(true)
         .sheet(isPresented: $showItemPicker) {
             ItemPickerSheet(session: $session)
                 .environmentObject(vm)
         }
-        .sheet(item: $editingEntry) { entry in
+        .navigationDestination(for: WorkoutEntry.self) { entry in
             AddItemView(session: $session, entryId: entry.id)
                 .environmentObject(vm)
         }
+        } // NavigationStack
     }
 
     private func entryRow(entry: WorkoutEntry) -> some View {
         let itemName = vm.item(for: entry.itemId)?.name ?? "Unknown"
         return VStack(spacing: 0) {
             Button {
-                editingEntry = entry
+                navPath.append(entry)
             } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "line.3.horizontal")

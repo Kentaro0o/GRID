@@ -203,7 +203,7 @@ struct SessionTimelineView: View {
 
                 // 右：Todayボタン（今日以外のとき）
                 if !isToday {
-                    Button("Today") {
+                    Button("今日") {
                         _ = vm.ensureTodaySession()
                         withAnimation(.easeInOut(duration: 0.3)) {
                             currentIndex = todayIndex
@@ -233,7 +233,7 @@ struct SessionTimelineView: View {
 
     private var headerTitle: String {
         guard let s = currentSession else { return "" }
-        if isToday { return "Today" }
+        if isToday { return "今日" }
         let f = DateFormatter()
         f.dateFormat = "yyyy"
         return f.string(from: s.date)
