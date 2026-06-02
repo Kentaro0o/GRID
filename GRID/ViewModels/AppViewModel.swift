@@ -58,6 +58,18 @@ class AppViewModel: ObservableObject {
         return s
     }
 
+    /// 写真・ログ・体重が全てない空セッションを削除（今日のセッションは残す）
+    func removeEmptySessions() {
+        let cal = Calendar.current
+        sessions.removeAll { s in
+            !cal.isDateInToday(s.date)
+            && s.entries.isEmpty
+            && s.photoData == nil
+            && s.bodyWeight == nil
+        }
+        save()
+    }
+
     func updateSession(_ session: Session) {
         if let i = sessions.firstIndex(where: { $0.id == session.id }) {
             sessions[i] = session
@@ -93,11 +105,44 @@ class AppViewModel: ObservableObject {
 
     // MARK: - Weight chart data
 
+    /// 全セッションを対象。bodyWeightがない場合は前後の値から線形補間
     var weightChartData: [(Date, Double)] {
-        sessions.compactMap { s in
-            guard let w = s.bodyWeight else { return nil }
-            return (s.date, w)
-        }.sorted { $0.0 < $1.0 }
+        let sorted = sessions.sorted { $0.date < $1.date }
+        guard !sorted.isEmpty else { return [] }
+
+        // まずbodyWeightがあるものだけ取り出す
+        let knownWeights: [(Int, Double)] = sorted.enumerated().compactMap { i, s in
+            s.bodyWeight.map { (i, $0) }
+        }
+        guard !knownWeights.isEmpty else {
+            // 体重データが一切ない場合は全セッションをデフォルト値で返す
+            return sorted.map { ($0.date, 70.0) }
+        }
+
+        // 各セッションに補間した体重を割り当て
+        var result: [(Date, Double)] = []
+        for (i, session) in sorted.enumerated() {
+            if let w = session.bodyWeight {
+                result.append((session.date, w))
+            } else {
+                // 前後のknownWeightsから線形補間
+                let prev = knownWeights.last(where: { $0.0 < i })
+                let next = knownWeights.first(where: { $0.0 > i })
+                let interpolated: Double
+                if let p = prev, let n = next {
+                    let ratio = Double(i - p.0) / Double(n.0 - p.0)
+                    interpolated = p.1 + ratio * (n.1 - p.1)
+                } else if let p = prev {
+                    interpolated = p.1
+                } else if let n = next {
+                    interpolated = n.1
+                } else {
+                    interpolated = 70.0
+                }
+                result.append((session.date, interpolated))
+            }
+        }
+        return result
     }
 
     // MARK: - Persistence

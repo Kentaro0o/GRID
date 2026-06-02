@@ -17,6 +17,9 @@ struct SessionTimelineView: View {
     @State private var dwellTimer: Timer? = nil
     @State private var addMenuSession: Session? = nil
     @State private var photoPicker: PhotosPickerItem? = nil
+    @State private var showDatePicker = false
+    @State private var showCalendar = false
+    @State private var newSessionDate = Date()
 
     private var currentSession: Session? {
         sessions[safe: currentIndex]
@@ -60,6 +63,7 @@ struct SessionTimelineView: View {
                 // ─── チャート (中央揃え) ───
                 WeightLineChart(
                     data: vm.weightChartData,
+                    knownWeightDates: Set(vm.sessions.compactMap { $0.bodyWeight != nil ? $0.date : nil }),
                     centerIndex: chartCenterIndex,
                     accentColor: isPurple ? .white.opacity(0.85) : .gridAccent,
                     backgroundColor: isPurple
@@ -79,6 +83,7 @@ struct SessionTimelineView: View {
             }
         }
         .onAppear {
+            _ = vm.ensureTodaySession()  // 今日のセッションが必ず存在する状態にする
             currentIndex = todayIndex
         }
         .onChange(of: photoPicker) { _, newItem in
@@ -92,6 +97,38 @@ struct SessionTimelineView: View {
         .fullScreenCover(item: $addMenuSession) { session in
             AddMenuView(session: session)
                 .environmentObject(vm)
+        }
+        .onChange(of: addMenuSession) { _, newVal in
+            // AddMenuViewが閉じたとき（nilになったとき）に空セッションを削除
+            if newVal == nil {
+                vm.removeEmptySessions()
+            }
+        }
+        .sheet(isPresented: $showCalendar) {
+            TrainingCalendarSheet { session in
+                addMenuSession = session
+            }
+            .environmentObject(vm)
+        }
+        .sheet(isPresented: $showDatePicker) {
+            AddPastSessionSheet(selectedDate: $newSessionDate) { date in
+                // 既存セッションがあればそこへ、なければ新規作成
+                let existing = vm.sessions.first {
+                    Calendar.current.isDate($0.date, inSameDayAs: date)
+                }
+                let session: Session
+                if let e = existing {
+                    session = e
+                } else {
+                    var s = Session(
+                        sessionNumber: (vm.sessions.map { $0.sessionNumber }.max() ?? 0) + 1,
+                        date: date
+                    )
+                    vm.updateSession(s)
+                    session = s
+                }
+                addMenuSession = session
+            }
         }
     }
 
@@ -126,18 +163,39 @@ struct SessionTimelineView: View {
                 .animation(.none, value: currentIndex)
 
             HStack {
-                Image(systemName: "calendar")
-                    .font(.system(size: 22))
-                    .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
+                // 左：カレンダーボタン + 過去追加ボタン
+                HStack(spacing: 12) {
+                    Button {
+                        showCalendar = true
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 22))
+                            .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
+                    }
+
+                    Button {
+                        newSessionDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+                        showDatePicker = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(isPurple ? .white.opacity(0.8) : .gridTextPrimary)
+                            .frame(width: 28, height: 28)
+                            .background(isPurple ? Color.white.opacity(0.15) : Color.gridCard)
+                            .clipShape(Circle())
+                    }
+                }
 
                 Spacer()
 
+                // 右：Todayボタン（今日以外のとき）
                 if !isToday {
                     Button("Today") {
+                        _ = vm.ensureTodaySession()
                         withAnimation(.easeInOut(duration: 0.3)) {
                             currentIndex = todayIndex
                         }
-                    }                          // ← Buttonここで閉じる
+                    }
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
                     .padding(.horizontal, 14)
@@ -150,8 +208,7 @@ struct SessionTimelineView: View {
                             )
                     )
                 } else {
-                    Color.clear
-                        .frame(width: 70, height: 32)
+                    Color.clear.frame(width: 70, height: 32)
                 }
             }
         }
@@ -194,18 +251,19 @@ struct SessionTimelineView: View {
                 photoContent(session: session)
             }
 
+            let hasLog = !session.entries.isEmpty
             Button {
                 addMenuSession = session
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: isCurrent ? "plus.circle" : "doc.text")
-                    Text(isCurrent ? "Menu" : "ログを見る")
+                    Image(systemName: hasLog ? "doc.text" : "plus.circle")
+                    Text(hasLog ? "ログを見る" : "ログを追加")
                         .font(.gridBody)
                 }
-                .foregroundColor(isPurple ? .white.opacity(0.8) : .gridTextSecondary)
+                .foregroundColor(isPurple ? .white.opacity(0.8) : (!hasLog ? .gridAccent : .gridTextSecondary))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(isPurple ? Color.white.opacity(0.12) : Color.gridCardInner)
+                .background(isPurple ? Color.white.opacity(0.12) : (!hasLog ? Color.gridAccent.opacity(0.15) : Color.gridCardInner))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
@@ -240,12 +298,8 @@ struct SessionTimelineView: View {
                     .scaledToFill()
             } else {
                 VStack(spacing: 8) {
-                    Image(systemName: Calendar.current.isDateInToday(session.date) ? "plus.circle" : "photo")
-                        .font(.system(size: 24))
-                    if Calendar.current.isDateInToday(session.date) {
-                        Text("Photo")
-                            .font(.gridBody)
-                    }
+                    Image(systemName: "photo")
+                        .font(.system(size: 28))
                 }
                 .foregroundColor(isPurple ? .white.opacity(0.4) : .gridTextSecondary)
             }
@@ -295,6 +349,224 @@ struct SessionTimelineView: View {
 private extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+// MARK: - 過去セッション追加シート
+
+struct AddPastSessionSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var selectedDate: Date
+    let onConfirm: (Date) -> Void
+
+    var body: some View {
+        ZStack {
+            Color.gridBg.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Text("過去のログを追加")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.gridTextPrimary)
+                    Spacer()
+                    Button("キャンセル") { dismiss() }
+                        .foregroundColor(.gridAccent)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+                .padding(.bottom, 20)
+
+                DatePicker(
+                    "日付を選択",
+                    selection: $selectedDate,
+                    in: ...Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .tint(.gridAccent)
+                .environment(\.locale, Locale(identifier: "ja_JP"))
+                .padding(.horizontal, 16)
+
+                Spacer()
+
+                Button {
+                    onConfirm(selectedDate)
+                    dismiss()
+                } label: {
+                    Text("この日のログを追加")
+                        .font(.gridHeadline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.gridAccent)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+// MARK: - トレーニングカレンダーシート
+
+struct TrainingCalendarSheet: View {
+    @EnvironmentObject var vm: AppViewModel
+    @Environment(\.dismiss) var dismiss
+    let onSelectSession: (Session) -> Void
+
+    @State private var displayMonth = Date()
+    private let cal = Calendar(identifier: .gregorian)
+
+    private var daysInMonth: [Date?] {
+        guard let range = cal.range(of: .day, in: .month, for: displayMonth),
+              let firstDay = cal.date(from: cal.dateComponents([.year, .month], from: displayMonth))
+        else { return [] }
+
+        var weekday = cal.component(.weekday, from: firstDay) - 1 // 0=日
+        // 月曜始まりに変換
+        weekday = (weekday + 6) % 7
+        return Array(repeating: nil, count: weekday) + range.map { d -> Date? in
+            cal.date(byAdding: .day, value: d - 1, to: firstDay)
+        }
+    }
+
+    private func session(for date: Date) -> Session? {
+        vm.sessions.first { cal.isDate($0.date, inSameDayAs: date) }
+    }
+
+    private var monthLabel: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "yyyy年 M月"
+        return f.string(from: displayMonth)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.gridBg.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // ヘッダー
+                HStack {
+                    Text("カレンダー")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.gridTextPrimary)
+                    Spacer()
+                    Button("閉じる") { dismiss() }
+                        .foregroundColor(.gridAccent)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+                .padding(.bottom, 16)
+
+                // 月ナビゲーション
+                HStack {
+                    Button {
+                        displayMonth = cal.date(byAdding: .month, value: -1, to: displayMonth) ?? displayMonth
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(.gridAccent)
+                            .frame(width: 36, height: 36)
+                    }
+
+                    Spacer()
+
+                    Text(monthLabel)
+                        .font(.gridHeadline)
+                        .foregroundColor(.gridTextPrimary)
+
+                    Spacer()
+
+                    Button {
+                        let next = cal.date(byAdding: .month, value: 1, to: displayMonth) ?? displayMonth
+                        if next <= Date() { displayMonth = next }
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.gridAccent)
+                            .frame(width: 36, height: 36)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+
+                // 曜日ヘッダー
+                HStack(spacing: 0) {
+                    ForEach(["月","火","水","木","金","土","日"], id: \.self) { d in
+                        Text(d)
+                            .font(.gridSmall)
+                            .foregroundColor(.gridTextSecondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+
+                // 日付グリッド
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 8) {
+                    ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, date in
+                        if let date {
+                            dayCell(date: date)
+                        } else {
+                            Color.clear.frame(height: 44)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                Spacer()
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func dayCell(date: Date) -> some View {
+        let s = session(for: date)
+        let hasLog = !(s?.entries.isEmpty ?? true)
+        let isToday = cal.isDateInToday(date)
+        let isFuture = date > Date()
+
+        return Button {
+            guard !isFuture else { return }
+            if let s {
+                onSelectSession(s)
+                dismiss()
+            }
+        } label: {
+            ZStack {
+                // トレーニング記録あり → アクセントカラー背景
+                if hasLog {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gridAccent.opacity(0.25))
+                }
+                // 今日 → 枠線
+                if isToday {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gridAccent, lineWidth: 1.5)
+                }
+
+                VStack(spacing: 2) {
+                    Text("\(cal.component(.day, from: date))")
+                        .font(.system(size: 15, weight: hasLog ? .semibold : .regular))
+                        .foregroundColor(
+                            isFuture ? .gridTextTertiary :
+                            hasLog   ? .gridAccent :
+                            isToday  ? .gridTextPrimary :
+                                       .gridTextSecondary
+                        )
+
+                    // ログありの場合は小さいドット
+                    if hasLog {
+                        Circle()
+                            .fill(Color.gridAccent)
+                            .frame(width: 4, height: 4)
+                    }
+                }
+                .frame(height: 44)
+            }
+        }
+        .disabled(isFuture)
     }
 }
 

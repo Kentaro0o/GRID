@@ -2,6 +2,8 @@ import SwiftUI
 
 struct WeightLineChart: View {
     let data: [(Date, Double)]
+    /// bodyWeightが実際に記録されているセッションの日付セット
+    var knownWeightDates: Set<Date> = []
     var centerIndex: Int = 0
     var accentColor: Color = .gridAccent
     var backgroundColor: Color = .gridBg
@@ -18,28 +20,45 @@ struct WeightLineChart: View {
             let positions = points(size: size, center: animatedCenter)
             guard positions.count >= 1 else { return }
 
-            // 線
+            // 線（bodyWeightが実際にある点同士だけ繋ぐ）
             var linePath = Path()
+            var inLine = false
             for (i, pos) in positions.enumerated() {
-                if i == 0 { linePath.move(to: pos) }
-                else       { linePath.addLine(to: pos) }
+                if hasKnownWeight(index: i) {
+                    if !inLine {
+                        linePath.move(to: pos)
+                        inLine = true
+                    } else {
+                        linePath.addLine(to: pos)
+                    }
+                } else {
+                    inLine = false
+                }
             }
-            ctx.stroke(linePath,
-                       with: .color(accentColor.opacity(0.55)),
-                       lineWidth: 2)
+            ctx.stroke(linePath, with: .color(accentColor.opacity(0.55)), lineWidth: 2)
 
-            // ドット（背景色で線をマスクしてから塗る）
+            // ドット
             for (i, pos) in positions.enumerated() {
-                let isCurrent = i == centerIndex
+                let isCurrent  = i == centerIndex
+                let hasWeight  = hasKnownWeight(index: i)
                 let r: CGFloat = isCurrent ? 8 : 3.5
 
-                // 背景色の円で線を隠す
                 let maskRect = CGRect(x: pos.x - r, y: pos.y - r, width: r * 2, height: r * 2)
                 ctx.fill(Path(ellipseIn: maskRect), with: .color(backgroundColor))
 
-                // アクセントカラーで塗る（透明度なし＝完全な塗り）
-                let opacity: Double = isCurrent ? 1.0 : 0.55
-                ctx.fill(Path(ellipseIn: maskRect), with: .color(accentColor.opacity(opacity)))
+                if hasWeight {
+                    // 実データあり → 塗りつぶし
+                    let opacity: Double = isCurrent ? 1.0 : 0.55
+                    ctx.fill(Path(ellipseIn: maskRect), with: .color(accentColor.opacity(opacity)))
+                } else {
+                    // 補間値（bodyWeightなし）→ 枠のみの小さいドット
+                    let smallR = r * 0.7
+                    let smallRect = CGRect(x: pos.x - smallR, y: pos.y - smallR,
+                                          width: smallR * 2, height: smallR * 2)
+                    ctx.stroke(Path(ellipseIn: smallRect),
+                               with: .color(accentColor.opacity(0.3)),
+                               lineWidth: 1)
+                }
             }
         }
         .onAppear {
@@ -52,9 +71,15 @@ struct WeightLineChart: View {
         }
     }
 
+    private func hasKnownWeight(index: Int) -> Bool {
+        guard index < data.count else { return false }
+        let cal = Calendar.current
+        return knownWeightDates.contains(where: { cal.isDate($0, inSameDayAs: data[index].0) })
+    }
+
     private func points(size: CGSize, center: Double) -> [CGPoint] {
-        let cx = size.width / 2
-        let h  = size.height
+        let cx    = size.width / 2
+        let h     = size.height
         let range = maxVal - minVal
         return data.enumerated().map { i, pt in
             let x = cx + CGFloat(Double(i) - center) * spacing
