@@ -176,7 +176,7 @@ class AppViewModel: ObservableObject {
             var s = Session(
                 sessionNumber: 41 + (6 - i),
                 date: date,
-                bodyWeight: baseWeight + Double.random(in: -1.5...1.5)
+                bodyWeight: ((baseWeight + Double.random(in: -1.5...1.5)) * 10).rounded() / 10
             )
             // Add sample entries for the first few sessions
             if i > 0, let benchId = items.first(where: { $0.name == "ベンチプレス" })?.id {

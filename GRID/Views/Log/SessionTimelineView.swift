@@ -20,6 +20,8 @@ struct SessionTimelineView: View {
     @State private var showDatePicker = false
     @State private var showCalendar = false
     @State private var newSessionDate = Date()
+    @State private var showWeightInput = false
+    @State private var weightInputText = ""
 
     private var currentSession: Session? {
         sessions[safe: currentIndex]
@@ -97,6 +99,17 @@ struct SessionTimelineView: View {
         .fullScreenCover(item: $addMenuSession) { session in
             AddMenuView(session: session)
                 .environmentObject(vm)
+        }
+        .alert("体重を入力", isPresented: $showWeightInput) {
+            TextField("例: 72.5", text: $weightInputText)
+                .keyboardType(.decimalPad)
+            Button("保存") {
+                if let w = Double(weightInputText), var session = currentSession {
+                    session.bodyWeight = (w * 10).rounded() / 10
+                    vm.updateSession(session)
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
         }
         .onChange(of: addMenuSession) { _, newVal in
             // AddMenuViewが閉じたとき（nilになったとき）に空セッションを削除
@@ -313,19 +326,33 @@ struct SessionTimelineView: View {
     // MARK: - 体重ピル
 
     private var weightPill: some View {
-        VStack(spacing: 2) {
-            Text("Weight")
-                .font(.gridSmall)
-                .foregroundColor(isPurple ? .white.opacity(0.65) : .gridTextSecondary)
-                .kerning(1)
-            Text(currentSession?.bodyWeight.map { "\($0, specifier: "%.1f")kg" } ?? "-- kg")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.gridTextPrimary)
+        let hasWeight = currentSession?.bodyWeight != nil
+
+        return Button {
+            weightInputText = currentSession?.bodyWeight.map { String($0) } ?? ""
+            showWeightInput = true
+        } label: {
+            VStack(spacing: 2) {
+                Text("Weight")
+                    .font(.gridSmall)
+                    .foregroundColor(isPurple ? .white.opacity(0.65) : .gridTextSecondary)
+                    .kerning(1)
+                if hasWeight {
+                    Text("\(currentSession!.bodyWeight!, specifier: "%.1f") kg")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.gridTextPrimary)
+                } else {
+                    Text("+ KG")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(isPurple ? .white.opacity(0.5) : .gridAccent)
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 12)
+            .background(isPurple ? Color.white.opacity(0.12) : Color.gridCard)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
         }
-        .padding(.horizontal, 28)
-        .padding(.vertical, 12)
-        .background(isPurple ? Color.white.opacity(0.12) : Color.gridCard)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .buttonStyle(.plain)
         .animation(.easeInOut(duration: 0.35), value: isPurple)
     }
 
