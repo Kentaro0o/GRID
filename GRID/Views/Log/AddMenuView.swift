@@ -189,69 +189,157 @@ struct ItemPickerSheet: View {
     @Binding var session: Session
 
     @State private var selectedGroup: MuscleGroup = .chest
+    @State private var selectedItemIds: Set<UUID> = []
+    @State private var searchText: String = ""
+
+    private var filteredItems: [Item] {
+        let items = vm.items(for: selectedGroup)
+        if searchText.isEmpty { return items }
+        return items.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
 
     var body: some View {
         ZStack {
             Color.gridBg.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack {
+                // ヘッダー
+                ZStack {
                     Text("種目を選択")
                         .font(.gridHeadline)
                         .foregroundColor(.gridTextPrimary)
-                    Spacer()
-                    Button("閉じる") { dismiss() }
+                        .frame(maxWidth: .infinity)
+
+                    HStack {
+                        Button("閉じる") {
+                            dismiss()
+                        }
+                        .font(.gridBody)
                         .foregroundColor(.gridAccent)
+
+                        Spacer()
+
+                        Button {
+                            addSelectedItems()
+                        } label: {
+                            Text("追加\(selectedItemIds.isEmpty ? "" : "(\(selectedItemIds.count))")")
+                                .font(.gridBody)
+                                .foregroundColor(selectedItemIds.isEmpty ? .gridTextTertiary : .white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 7)
+                                .background(selectedItemIds.isEmpty ? Color.gridCard : Color.gridAccent)
+                                .clipShape(Capsule())
+                        }
+                        .disabled(selectedItemIds.isEmpty)
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
                 .padding(.bottom, 16)
 
-                // Muscle group filter
+                // 検索フォーム
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gridTextTertiary)
+                    TextField("検索", text: $searchText)
+                        .font(.gridBody)
+                        .foregroundColor(.gridTextPrimary)
+                    if !searchText.isEmpty {
+                        Button { searchText = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gridTextTertiary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 44)
+                .background(Color.gridCard)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
+
+                // 筋肉グループフィルター
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(MuscleGroup.allCases) { group in
+                            let isSelected = selectedGroup == group
+                            let hasMatch = !searchText.isEmpty &&
+                                vm.items(for: group).contains { $0.name.localizedCaseInsensitiveContains(searchText) }
                             Button {
                                 selectedGroup = group
                             } label: {
                                 Text(group.rawValue)
                                     .font(.gridBody)
-                                    .foregroundColor(selectedGroup == group ? .white : .gridTextSecondary)
+                                    .foregroundColor(
+                                        isSelected ? .white :
+                                        hasMatch   ? .gridAccent :
+                                                     .gridTextSecondary
+                                    )
                                     .padding(.horizontal, 18)
                                     .padding(.vertical, 8)
-                                    .background(selectedGroup == group ? Color.gridAccent : Color.gridCard)
+                                    .background(
+                                        isSelected ? Color.gridAccent :
+                                        hasMatch   ? Color.gridAccent.opacity(0.30) :
+                                                     Color.gridCard
+                                    )
                                     .clipShape(Capsule())
                             }
                         }
                     }
                     .padding(.horizontal, 24)
                 }
-                .padding(.bottom, 16)
+                .padding(.bottom, 12)
 
+                // 種目リスト
                 List {
-                    ForEach(vm.items(for: selectedGroup)) { item in
+                    ForEach(filteredItems) { item in
+                        let isSelected = selectedItemIds.contains(item.id)
                         Button {
-                            addItem(item)
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                if isSelected {
+                                    selectedItemIds.remove(item.id)
+                                } else {
+                                    selectedItemIds.insert(item.id)
+                                }
+                            }
                         } label: {
-                            HStack {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .stroke(isSelected ? Color.gridAccent : Color.gridTextTertiary.opacity(0.5), lineWidth: 1.5)
+                                        .frame(width: 18, height: 18)
+                                    if isSelected {
+                                        Circle()
+                                            .fill(Color.gridAccent)
+                                            .frame(width: 18, height: 18)
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
                                 Text(item.name)
+                                    .font(.gridBody)
+                                    //.font(.system(size: 17, weight: .regular))
                                     .foregroundColor(.gridTextPrimary)
                                 Spacer()
-                                Image(systemName: "plus.circle")
-                                    .foregroundColor(.gridAccent)
                             }
                         }
-                        .listRowBackground(Color.gridCard)
+                        .listRowBackground(isSelected ? Color.gridAccent.opacity(0.08) : Color.gridCard)
+                        .animation(.easeInOut(duration: 0.15), value: isSelected)
                     }
                 }
                 .scrollContentBackground(.hidden)
             }
         }
+        .preferredColorScheme(.dark)
     }
 
-    private func addItem(_ item: Item) {
-        let entry = WorkoutEntry(itemId: item.id)
-        session.entries.append(entry)
+    private func addSelectedItems() {
+        for id in selectedItemIds {
+            if !session.entries.contains(where: { $0.itemId == id }) {
+                session.entries.append(WorkoutEntry(itemId: id))
+            }
+        }
         vm.updateSession(session)
         dismiss()
     }

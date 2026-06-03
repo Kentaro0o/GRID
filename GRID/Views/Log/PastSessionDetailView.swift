@@ -8,11 +8,12 @@ struct PastSessionDetailView: View {
     let initialSession: Session
 
     @State private var session: Session
-    @State private var photoPicker: PhotosPickerItem? = nil
+    @State private var photoPicker: [PhotosPickerItem] = []
     @State private var showPhotoSourceDialog = false
     @State private var showCamera = false
     @State private var showLibraryPicker = false
     @State private var cameraImageData: Data? = nil
+    @State private var showPhotoViewer = false
     @State private var showAddMenu = false
     @State private var showWeightInput = false
     @State private var weightInputText = ""
@@ -62,13 +63,29 @@ struct PastSessionDetailView: View {
                 VStack(spacing: 16) {
                     // 写真エリア
                     Button {
-                        showPhotoSourceDialog = true
+                        if session.photosData.isEmpty {
+                            showPhotoSourceDialog = true
+                        } else {
+                            showPhotoViewer = true
+                        }
                     } label: {
                         Group {
-                            if let data = session.photoData, let ui = UIImage(data: data) {
-                                Image(uiImage: ui)
-                                    .resizable()
-                                    .scaledToFill()
+                            if let data = session.photosData.first, let ui = UIImage(data: data) {
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: ui)
+                                        .resizable()
+                                        .scaledToFill()
+                                    if session.photosData.count > 1 {
+                                        Text("\(session.photosData.count)")
+                                            .font(.gridCaption)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.black.opacity(0.5))
+                                            .clipShape(Capsule())
+                                            .padding(8)
+                                    }
+                                }
                             } else {
                                 Image(systemName: "photo")
                                     .font(.system(size: 32))
@@ -139,22 +156,23 @@ struct PastSessionDetailView: View {
                 .padding(.bottom, 60)
             }
         }
-        // 写真ソース選択
         .confirmationDialog("写真を追加", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
             Button("カメラで撮影") { showCamera = true }
             Button("カメラロールから選択") { showLibraryPicker = true }
-            if session.photoData != nil {
-                Button("写真を削除", role: .destructive) {
-                    session.photoData = nil
-                    vm.updateSession(session)
-                }
-            }
             Button("キャンセル", role: .cancel) {}
         }
-        .photosPicker(isPresented: $showLibraryPicker, selection: $photoPicker, matching: .images)
+        .photosPicker(isPresented: $showLibraryPicker, selection: $photoPicker, maxSelectionCount: 10, matching: .images)
         .fullScreenCover(isPresented: $showCamera) {
             CameraView(imageData: $cameraImageData, saveToRoll: saveCameraPhotoToRoll)
                 .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: $showPhotoViewer) {
+            PhotoViewerView(
+                photosData: Binding(
+                    get: { session.photosData },
+                    set: { session.photosData = $0; vm.updateSession(session) }
+                )
+            )
         }
         .fullScreenCover(isPresented: $showAddMenu) {
             AddMenuView(session: session)
@@ -171,17 +189,20 @@ struct PastSessionDetailView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
-        .onChange(of: photoPicker) { _, newItem in
+        .onChange(of: photoPicker) { _, items in
             Task {
-                guard let data = try? await newItem?.loadTransferable(type: Data.self) else { return }
-                session.photoData = data
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        session.photosData.append(data)
+                    }
+                }
                 vm.updateSession(session)
-                photoPicker = nil
+                photoPicker = []
             }
         }
         .onChange(of: cameraImageData) { _, data in
             guard let data else { return }
-            session.photoData = data
+            session.photosData.append(data)
             vm.updateSession(session)
             cameraImageData = nil
         }

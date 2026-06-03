@@ -88,3 +88,27 @@ struct WeightLineChart: View {
         }
     }
 }
+
+#Preview {
+    let cal = Calendar.current
+    let today = Date()
+    let data: [(Date, Double)] = (0..<10).map { i in
+        let date = cal.date(byAdding: .day, value: -9 + i, to: today)!
+        return (date, 70.0 + Double(i) * 0.3)
+    }
+    let knownDates = Set(stride(from: 0, to: 10, by: 2).map {
+        cal.date(byAdding: .day, value: -9 + $0, to: today)!
+    })
+    return ZStack {
+        Color.gridBg.ignoresSafeArea()
+        WeightLineChart(
+            data: data,
+            knownWeightDates: knownDates,
+            centerIndex: 9,
+            accentColor: .gridAccent,
+            backgroundColor: .gridBg
+        )
+        .frame(height: 90)
+        .padding(.horizontal, 24)
+    }
+}

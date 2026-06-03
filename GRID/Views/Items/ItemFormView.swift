@@ -128,3 +128,18 @@ struct ItemFormView: View {
         return String(format: "%d:%02d", m, s)
     }
 }
+
+#Preview {
+    ZStack {
+        Color.gridBg.ignoresSafeArea()
+        ScrollView {
+            ItemFormView(
+                name: .constant("ベンチプレス"),
+                type: .constant(.freeWeight),
+                restTimerSeconds: .constant(120),
+                muscleGroup: .constant(.chest)
+            )
+            .padding(.top, 40)
+        }
+    }
+}

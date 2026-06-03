@@ -51,3 +51,13 @@ struct GRIDTabBar: View {
         .buttonStyle(.plain)
     }
 }
+
+#Preview {
+    ZStack {
+        Color.gridBg.ignoresSafeArea()
+        VStack {
+            Spacer()
+            GRIDTabBar(selected: .constant(.log))
+        }
+    }
+}

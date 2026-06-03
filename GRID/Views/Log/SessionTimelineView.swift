@@ -18,7 +18,7 @@ struct SessionTimelineView: View {
     @State private var dwellTimer: Timer? = nil
     @State private var addMenuSession: Session? = nil
     @State private var sessionToDelete: Session? = nil
-    @State private var photoPicker: PhotosPickerItem? = nil
+    @State private var photoPicker: [PhotosPickerItem] = []
     @State private var showAddCalendar = false
     @State private var showWeightInput = false
     @State private var weightInputText = ""
@@ -26,6 +26,8 @@ struct SessionTimelineView: View {
     @State private var showCamera = false
     @State private var showLibraryPicker = false
     @State private var cameraImageData: Data? = nil
+    @State private var showPhotoViewer = false
+    @State private var photoViewerInitialIndex = 0
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
 
     private var currentSession: Session? {
@@ -93,45 +95,55 @@ struct SessionTimelineView: View {
             _ = vm.ensureTodaySession()  // 今日のセッションが必ず存在する状態にする
             currentIndex = todayIndex
         }
-        .onChange(of: photoPicker) { _, newItem in
+        .onChange(of: photoPicker) { _, items in
             Task {
-                guard let data = try? await newItem?.loadTransferable(type: Data.self),
-                      var session = currentSession else { return }
-                session.photoData = data
+                guard var session = currentSession else { return }
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        session.photosData.append(data)
+                    }
+                }
                 vm.updateSession(session)
-                // リセットして再度同じ写真でも選択できるようにする
-                photoPicker = nil
+                photoPicker = []
             }
         }
         .fullScreenCover(item: $addMenuSession) { session in
             AddMenuView(session: session)
                 .environmentObject(vm)
         }
-        // 写真ソース選択
+        // 写真なし → 追加ダイアログ
         .confirmationDialog("写真を追加", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
             Button("カメラで撮影") { showCamera = true }
             Button("カメラロールから選択") { showLibraryPicker = true }
-            if currentSession?.photoData != nil {
-                Button("写真を削除", role: .destructive) {
-                    if var session = currentSession {
-                        session.photoData = nil
-                        vm.updateSession(session)
-                    }
-                }
-            }
             Button("キャンセル", role: .cancel) {}
         }
-        .photosPicker(isPresented: $showLibraryPicker, selection: $photoPicker, matching: .images)
-        // カメラ
+        .photosPicker(isPresented: $showLibraryPicker, selection: $photoPicker, maxSelectionCount: 10, matching: .images)
         .fullScreenCover(isPresented: $showCamera) {
             CameraView(imageData: $cameraImageData, saveToRoll: saveCameraPhotoToRoll)
                 .ignoresSafeArea()
         }
         .onChange(of: cameraImageData) { _, data in
             guard let data, var session = currentSession else { return }
-            session.photoData = data
+            session.photosData.append(data)
             vm.updateSession(session)
             cameraImageData = nil
+        }
+        // 写真あり → 全画面ビューア
+        .fullScreenCover(isPresented: $showPhotoViewer) {
+            if let idx = sessions.firstIndex(where: { $0.id == currentSession?.id }) {
+                PhotoViewerView(
+                    photosData: Binding(
+                        get: { vm.sessions.first(where: { $0.id == sessions[safe: idx]?.id })?.photosData ?? [] },
+                        set: { newData in
+                            if var s = vm.sessions.first(where: { $0.id == sessions[safe: idx]?.id }) {
+                                s.photosData = newData
+                                vm.updateSession(s)
+                            }
+                        }
+                    ),
+                    initialIndex: photoViewerInitialIndex
+                )
+            }
         }
         .alert("体重を入力", isPresented: $showWeightInput) {
             TextField("例: 72.5", text: $weightInputText)
@@ -288,7 +300,12 @@ struct SessionTimelineView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Button {
-                showPhotoSourceDialog = true
+                if session.photosData.isEmpty {
+                    showPhotoSourceDialog = true
+                } else {
+                    photoViewerInitialIndex = 0
+                    showPhotoViewer = true
+                }
             } label: {
                 photoContent(session: session)
             }
@@ -351,10 +368,22 @@ struct SessionTimelineView: View {
     @ViewBuilder
     private func photoContent(session: Session) -> some View {
         Group {
-            if let data = session.photoData, let ui = UIImage(data: data) {
-                Image(uiImage: ui)
-                    .resizable()
-                    .scaledToFill()
+            if let data = session.photosData.first, let ui = UIImage(data: data) {
+                ZStack(alignment: .topTrailing) {
+                    Image(uiImage: ui)
+                        .resizable()
+                        .scaledToFill()
+                    if session.photosData.count > 1 {
+                        Text("\(session.photosData.count)")
+                            .font(.gridCaption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.black.opacity(0.5))
+                            .clipShape(Capsule())
+                            .padding(8)
+                    }
+                }
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "photo")

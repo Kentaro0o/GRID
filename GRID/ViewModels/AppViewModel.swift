@@ -64,7 +64,7 @@ class AppViewModel: ObservableObject {
         sessions.removeAll { s in
             !cal.isDateInToday(s.date)
             && s.entries.isEmpty
-            && s.photoData == nil
+            && s.photosData.isEmpty
             && s.bodyWeight == nil
         }
         save()
