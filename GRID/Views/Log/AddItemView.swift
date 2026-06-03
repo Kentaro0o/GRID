@@ -12,6 +12,9 @@ struct AddItemView: View {
     @State private var timer: Timer? = nil
     @State private var totalSeconds: Int = 120
     @State private var isEditingTimer = false
+    @FocusState private var focusedField: Field?
+
+    enum Field { case weight, reps, memo }
 
     private var entryIndex: Int? {
         session.entries.firstIndex { $0.id == entryId }
@@ -27,7 +30,7 @@ struct AddItemView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             Color.gridBgPurple.ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -55,7 +58,7 @@ struct AddItemView: View {
                 .padding(.bottom, 20)
                 
                 //確認のため
-                .background(.red)
+                //.background(.red)
 
                 // Sets list
                 ScrollView {
@@ -117,6 +120,7 @@ struct AddItemView: View {
                                 .frame(minHeight: 70)
                                 .padding(12)
                                 .scrollContentBackground(.hidden)
+                                .focused($focusedField, equals: .memo)
                                 .background(Color.gridCardInner)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
@@ -138,7 +142,11 @@ struct AddItemView: View {
                     }
                 }
 
-                // 編集ボタン
+                Spacer().frame(height: 160)
+            }
+
+            // 編集ボタン＋タイマー（キーボードで動かない）
+            VStack(spacing: 0) {
                 HStack {
                     Spacer()
                     Button {
@@ -160,13 +168,12 @@ struct AddItemView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 10)
                 .padding(.bottom, 10)
-                //.background(.white)
 
-                // Timer panel
                 timerPanel
-                //.background(.red)
             }
+            //.ignoresSafeArea(.keyboard)
         }
+        .ignoresSafeArea(.keyboard)
         .onAppear {
             if let item = entry.flatMap({ vm.item(for: $0.itemId) }) {
                 totalSeconds = item.restTimerSeconds
@@ -175,6 +182,15 @@ struct AddItemView: View {
         }
         .onDisappear {
             timer?.invalidate()
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完了") {
+                    focusedField = nil
+                }
+                .foregroundColor(.gridAccent)
+            }
         }
         .navigationBarHidden(true)
     }
@@ -201,6 +217,7 @@ struct AddItemView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
+                    .focused($focusedField, equals: .weight)
                 Text("Kg")
                     .font(.gridCaption)
                     .foregroundColor(.gridTextSecondary)
@@ -217,7 +234,13 @@ struct AddItemView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
+                    .focused($focusedField, equals: .reps)
+                Text("回")
+                    .font(.gridCaption)
+                    .foregroundColor(.gridTextSecondary)
             }
+
+            Spacer()
 
             // Delete
             Button {
