@@ -11,6 +11,7 @@ struct AddItemView: View {
     @State private var remainingSeconds: Int = 120
     @State private var timer: Timer? = nil
     @State private var totalSeconds: Int = 120
+    @State private var isEditingTimer = false
 
     private var entryIndex: Int? {
         session.entries.firstIndex { $0.id == entryId }
@@ -47,11 +48,14 @@ struct AddItemView: View {
                         .font(.gridHeadline)
                         .foregroundColor(.gridTextPrimary)
                     Spacer()
-                    Color.clear.frame(width: 36)
+                    Color.clear.frame(width: 36, height: 36)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 52)
+                .padding(.top, 20)
                 .padding(.bottom, 20)
+                
+                //確認のため
+                .background(.red)
 
                 // Sets list
                 ScrollView {
@@ -64,6 +68,7 @@ struct AddItemView: View {
                             Spacer()
                         }
                         .padding(.horizontal, 24)
+                        .padding(.top, 20)
                         .padding(.bottom, 10)
 
                         if let idx = entryIndex {
@@ -133,8 +138,33 @@ struct AddItemView: View {
                     }
                 }
 
+                // 編集ボタン
+                HStack {
+                    Spacer()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isEditingTimer.toggle()
+                            if !isEditingTimer {
+                                remainingSeconds = totalSeconds
+                            }
+                        }
+                    } label: {
+                        Image(systemName: isEditingTimer ? "checkmark.circle.fill" : "slider.horizontal.3")
+                            .font(.system(size: 20))
+                            .foregroundColor(isEditingTimer ? .gridAccent : .gridTextSecondary)
+                            .frame(width: 36, height: 36)
+                            .background(Color.gridCard)
+                            .clipShape(Circle())
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+                //.background(.white)
+
                 // Timer panel
                 timerPanel
+                //.background(.red)
             }
         }
         .onAppear {
@@ -212,50 +242,92 @@ struct AddItemView: View {
     // MARK: - Timer panel
 
     private var timerPanel: some View {
-        HStack(spacing: 24) {
-            
-            // Reset
-            Button {
-                remainingSeconds = totalSeconds
-                stopTimer()
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 18))
-                    .foregroundColor(timerRunning ? .white : .gridTextSecondary)
-            }
+        VStack(spacing: 0) {
+            HStack(spacing: 24) {
+                if isEditingTimer {
+                    // 編集モード：−
+                    Button {
+                        if totalSeconds > 30 {
+                            totalSeconds -= 30
+                            remainingSeconds = totalSeconds
+                            saveTimerToItem()
+                        }
+                    } label: {
+                        Image(systemName: "minus.circle")
+                            .font(.system(size: 28))
+                            .foregroundColor(.gridAccent)
+                    }
+                } else {
+                    // 通常：リセット
+                    Button {
+                        remainingSeconds = totalSeconds
+                        stopTimer()
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 18))
+                            .foregroundColor(timerRunning ? .white : .gridTextSecondary)
+                            .frame(width: 48, height: 48)
+                    }
+                }
 
-            // Time display
-            Text(timeString(remainingSeconds))
-                .font(.system(size: 48, weight: .bold, design: .monospaced))
-                .foregroundColor(timerRunning ? .white : .gridTextPrimary)
-                .frame(maxWidth: .infinity)
+                Text(timeString(isEditingTimer ? totalSeconds : remainingSeconds))
+                    .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    .foregroundColor(isEditingTimer ? .gridAccent : (timerRunning ? .white : .gridTextPrimary))
+                    .frame(maxWidth: .infinity)
 
-            // Play / Pause
-            Button {
-                timerRunning ? stopTimer() : startTimer()
-            } label: {
-                Image(systemName: timerRunning ? "pause.fill" : "play.fill")
-                    .font(.system(size: 22))
-                    .foregroundColor(timerRunning ? .white : .gridTextSecondary)
-                    .frame(width: 48, height: 48)
-                    .background(timerRunning ? Color.white.opacity(0.2) : Color.gridCard)
-                    .clipShape(Circle())
+                if isEditingTimer {
+                    // 編集モード：＋
+                    Button {
+                        totalSeconds += 30
+                        remainingSeconds = totalSeconds
+                        saveTimerToItem()
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 28))
+                            .foregroundColor(.gridAccent)
+                    }
+                } else {
+                    // 通常：再生/一時停止
+                    Button {
+                        timerRunning ? stopTimer() : startTimer()
+                    } label: {
+                        Image(systemName: timerRunning ? "pause.fill" : "play.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(timerRunning ? .white : .gridTextSecondary)
+                            .frame(width: 48, height: 48)
+                            .background(timerRunning ? Color.white.opacity(0.2) : Color.gridCard)
+                            .clipShape(Circle())
+                    }
+                }
             }
+            .padding(.horizontal, 32)
+            .padding(.top, 32)
+            .padding(.bottom, 32)
         }
-        
-        .padding(.horizontal, 32)
-        .padding(.top, 24)
-        .padding(.bottom, 24)
         .background(
-            timerRunning
-                ? Color.gridAccent.opacity(0.25)
-                : Color.gridCard.opacity(0.6)
+            isEditingTimer
+                ? Color.gridAccent.opacity(0.12)
+                : (timerRunning ? Color.gridAccent.opacity(0.25) : Color.gridCard.opacity(0.6))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.gridTextSecondary.opacity(0.3), lineWidth: 1)
+                .opacity(timerRunning || isEditingTimer ? 0 : 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        //.background(.green)
         .padding(.horizontal, 16)
-        .padding(.top, 20)
-        .padding(.bottom, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
         .animation(.easeInOut(duration: 0.3), value: timerRunning)
+        .animation(.easeInOut(duration: 0.2), value: isEditingTimer)
+    }
+
+    private func saveTimerToItem() {
+        guard let entry = entry,
+              var item = vm.item(for: entry.itemId) else { return }
+        item.restTimerSeconds = totalSeconds
+        vm.updateItem(item)
     }
 
     // MARK: - Timer logic
