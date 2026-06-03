@@ -43,7 +43,7 @@ struct AddItemView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.gridTextPrimary)
                             .frame(width: 36, height: 36)
-                            .background(Color.gridCard)
+                            //.background(Color.gridCard)
                             .clipShape(Circle())
                     }
                     Spacer()
@@ -90,7 +90,7 @@ struct AddItemView: View {
                             } label: {
                                 Image(systemName: "minus")
                                     .frame(width: 36, height: 36)
-                                    .background(Color.gridCard)
+                                    //.background(Color.gridCard)
                                     .clipShape(Circle())
                                     .foregroundColor(.gridTextPrimary)
                             }
@@ -104,7 +104,7 @@ struct AddItemView: View {
                             } label: {
                                 Image(systemName: "plus")
                                     .frame(width: 36, height: 36)
-                                    .background(Color.gridCard)
+                                    //.background(Color.gridCard)
                                     .clipShape(Circle())
                                     .foregroundColor(.gridTextPrimary)
                             }
@@ -161,7 +161,7 @@ struct AddItemView: View {
                             .font(.system(size: 20))
                             .foregroundColor(isEditingTimer ? .gridAccent : .gridTextSecondary)
                             .frame(width: 36, height: 36)
-                            .background(Color.gridCard)
+                            //.background(Color.gridCard)
                             .clipShape(Circle())
                     }
                 }
@@ -213,7 +213,7 @@ struct AddItemView: View {
                     .multilineTextAlignment(.center)
                     .frame(width: 56)
                     .padding(.vertical, 8)
-                    .background(Color.gridCard)
+                    //.background(Color.gridCard)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
@@ -230,7 +230,7 @@ struct AddItemView: View {
                     .multilineTextAlignment(.center)
                     .frame(width: 44)
                     .padding(.vertical, 8)
-                    .background(Color.gridCard)
+                    //.background(Color.gridCard)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
@@ -279,6 +279,7 @@ struct AddItemView: View {
                         Image(systemName: "minus.circle")
                             .font(.system(size: 28))
                             .foregroundColor(.gridAccent)
+                            .frame(width: 48, height: 48)
                     }
                 } else {
                     // 通常：リセット
@@ -308,6 +309,7 @@ struct AddItemView: View {
                         Image(systemName: "plus.circle")
                             .font(.system(size: 28))
                             .foregroundColor(.gridAccent)
+                            .frame(width: 48, height: 48)
                     }
                 } else {
                     // 通常：再生/一時停止
@@ -318,7 +320,7 @@ struct AddItemView: View {
                             .font(.system(size: 22))
                             .foregroundColor(timerRunning ? .white : .gridTextSecondary)
                             .frame(width: 48, height: 48)
-                            .background(timerRunning ? Color.white.opacity(0.2) : Color.gridCard)
+                            .background(timerRunning ? Color.white.opacity(0.2) : Color.clear)
                             .clipShape(Circle())
                     }
                 }
