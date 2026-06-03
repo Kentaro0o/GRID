@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "16.0"
+  developmentLanguage: ja
 
 settings:
   base:
@@ -31,6 +32,7 @@ targets:
       properties:
         CFBundleDisplayName: GRID
         CFBundleName: GRID
+        CFBundleDevelopmentRegion: ja
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         UILaunchScreen:
@@ -42,3 +44,4 @@ targets:
           - UIInterfaceOrientationPortrait
         NSPhotoLibraryUsageDescription: "トレーニング写真を追加するために使用します"
         NSPhotoLibraryAddUsageDescription: "トレーニング写真を保存するために使用します"
+        NSCameraUsageDescription: "トレーニング写真を撮影するために使用します"

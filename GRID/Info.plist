@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>ja</string>
 	<key>CFBundleDisplayName</key>
 	<string>GRID</string>
 	<key>CFBundleExecutable</key>
@@ -20,6 +20,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>トレーニング写真を撮影するために使用します</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>トレーニング写真を保存するために使用します</string>
 	<key>NSPhotoLibraryUsageDescription</key>

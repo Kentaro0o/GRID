@@ -9,6 +9,7 @@ struct SystemView: View {
     @State private var defaultRestTimer = 120
     @State private var showWeightInput = false
     @State private var weightInput = ""
+    @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
@@ -55,6 +56,25 @@ struct SystemView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 18)
+                    }
+
+                    // Camera setting
+                    sectionCard(title: "カメラ設定") {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("撮影した写真をカメラロールに保存")
+                                    .font(.gridBody)
+                                    .foregroundColor(.gridTextPrimary)
+                                Text("オフにするとアプリ内にのみ保存されます")
+                                    .font(.gridCaption)
+                                    .foregroundColor(.gridTextSecondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $saveCameraPhotoToRoll)
+                                .tint(.gridAccent)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
                     }
 
                     // Default rest timer

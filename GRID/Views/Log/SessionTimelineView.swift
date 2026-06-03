@@ -3,6 +3,7 @@ import PhotosUI
 
 struct SessionTimelineView: View {
     @EnvironmentObject var vm: AppViewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     private var sessions: [Session] {
         vm.sessions.sorted { $0.date < $1.date }
@@ -16,12 +17,16 @@ struct SessionTimelineView: View {
     @State private var isPurple: Bool = false
     @State private var dwellTimer: Timer? = nil
     @State private var addMenuSession: Session? = nil
+    @State private var sessionToDelete: Session? = nil
     @State private var photoPicker: PhotosPickerItem? = nil
-    @State private var showDatePicker = false
-    @State private var showCalendar = false
-    @State private var newSessionDate = Date()
+    @State private var showAddCalendar = false
     @State private var showWeightInput = false
     @State private var weightInputText = ""
+    @State private var showPhotoSourceDialog = false
+    @State private var showCamera = false
+    @State private var showLibraryPicker = false
+    @State private var cameraImageData: Data? = nil
+    @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
 
     private var currentSession: Session? {
         sessions[safe: currentIndex]
@@ -94,11 +99,39 @@ struct SessionTimelineView: View {
                       var session = currentSession else { return }
                 session.photoData = data
                 vm.updateSession(session)
+                // リセットして再度同じ写真でも選択できるようにする
+                photoPicker = nil
             }
         }
         .fullScreenCover(item: $addMenuSession) { session in
             AddMenuView(session: session)
                 .environmentObject(vm)
+        }
+        // 写真ソース選択
+        .confirmationDialog("写真を追加", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
+            Button("カメラで撮影") { showCamera = true }
+            Button("カメラロールから選択") { showLibraryPicker = true }
+            if currentSession?.photoData != nil {
+                Button("写真を削除", role: .destructive) {
+                    if var session = currentSession {
+                        session.photoData = nil
+                        vm.updateSession(session)
+                    }
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showLibraryPicker, selection: $photoPicker, matching: .images)
+        // カメラ
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraView(imageData: $cameraImageData, saveToRoll: saveCameraPhotoToRoll)
+                .ignoresSafeArea()
+        }
+        .onChange(of: cameraImageData) { _, data in
+            guard let data, var session = currentSession else { return }
+            session.photoData = data
+            vm.updateSession(session)
+            cameraImageData = nil
         }
         .alert("体重を入力", isPresented: $showWeightInput) {
             TextField("例: 72.5", text: $weightInputText)
@@ -111,37 +144,49 @@ struct SessionTimelineView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
-        .onChange(of: addMenuSession) { _, newVal in
-            // AddMenuViewが閉じたとき（nilになったとき）に空セッションを削除
-            if newVal == nil {
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
                 vm.removeEmptySessions()
             }
         }
-        .sheet(isPresented: $showCalendar) {
-            TrainingCalendarSheet { session in
-                addMenuSession = session
+        .alert("このログを削除しますか？", isPresented: Binding(
+            get: { sessionToDelete != nil },
+            set: { if !$0 { sessionToDelete = nil } }
+        )) {
+            Button("削除", role: .destructive) {
+                if let s = sessionToDelete {
+                    vm.deleteSession(s)
+                    sessionToDelete = nil
+                }
             }
-            .environmentObject(vm)
+            Button("キャンセル", role: .cancel) { sessionToDelete = nil }
         }
-        .sheet(isPresented: $showDatePicker) {
-            AddPastSessionSheet(selectedDate: $newSessionDate) { date in
-                // 既存セッションがあればそこへ、なければ新規作成
+        .sheet(isPresented: $showAddCalendar) {
+            TrainingCalendarSheet(mode: .add) { date in
                 let existing = vm.sessions.first {
                     Calendar.current.isDate($0.date, inSameDayAs: date)
                 }
-                let session: Session
-                if let e = existing {
-                    session = e
+                if let existing,
+                   let idx = sessions.firstIndex(where: { $0.id == existing.id }) {
+                    // 既存記録 → タイムラインに移動
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        currentIndex = idx
+                    }
                 } else {
-                    var s = Session(
+                    // 新規作成 → タイムラインに移動
+                    let s = Session(
                         sessionNumber: (vm.sessions.map { $0.sessionNumber }.max() ?? 0) + 1,
                         date: date
                     )
                     vm.updateSession(s)
-                    session = s
+                    if let idx = sessions.firstIndex(where: { $0.id == s.id }) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            currentIndex = idx
+                        }
+                    }
                 }
-                addMenuSession = session
             }
+            .environmentObject(vm)
         }
     }
 
@@ -177,26 +222,12 @@ struct SessionTimelineView: View {
 
             HStack {
                 // 左：カレンダーボタン + 過去追加ボタン
-                HStack(spacing: 12) {
-                    Button {
-                        showCalendar = true
-                    } label: {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 22))
-                            .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
-                    }
-
-                    Button {
-                        newSessionDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-                        showDatePicker = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(isPurple ? .white.opacity(0.8) : .gridTextPrimary)
-                            .frame(width: 28, height: 28)
-                            .background(isPurple ? Color.white.opacity(0.15) : Color.gridCard)
-                            .clipShape(Circle())
-                    }
+                Button {
+                    showAddCalendar = true
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 22))
+                        .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
                 }
 
                 Spacer()
@@ -256,28 +287,43 @@ struct SessionTimelineView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if isCurrent {
-                PhotosPicker(selection: $photoPicker, matching: .images) {
-                    photoContent(session: session)
-                }
-            } else {
+            Button {
+                showPhotoSourceDialog = true
+            } label: {
                 photoContent(session: session)
             }
+            .buttonStyle(.plain)
 
             let hasLog = !session.entries.isEmpty
-            Button {
-                addMenuSession = session
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: hasLog ? "doc.text" : "plus.circle")
-                    Text(hasLog ? "ログを見る" : "ログを追加")
-                        .font(.gridBody)
+            let isSessionToday = Calendar.current.isDateInToday(session.date)
+            HStack(spacing: 10) {
+                Button {
+                    addMenuSession = session
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: hasLog ? "doc.text" : "plus.circle")
+                        Text(hasLog ? "ログを見る" : "ログを追加")
+                            .font(.gridBody)
+                    }
+                    .foregroundColor(isPurple ? .white.opacity(0.8) : (!hasLog ? .gridAccent : .gridTextSecondary))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(isPurple ? Color.white.opacity(0.12) : (!hasLog ? Color.gridAccent.opacity(0.15) : Color.gridCardInner))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .foregroundColor(isPurple ? .white.opacity(0.8) : (!hasLog ? .gridAccent : .gridTextSecondary))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(isPurple ? Color.white.opacity(0.12) : (!hasLog ? Color.gridAccent.opacity(0.15) : Color.gridCardInner))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                if !isSessionToday {
+                    Button {
+                        sessionToDelete = session
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16))
+                            .foregroundColor(isPurple ? .white.opacity(0.5) : .gridTextTertiary)
+                            .frame(width: 44, height: 44)
+                            .background(isPurple ? Color.white.opacity(0.08) : Color.gridCardInner)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                }
             }
         }
         .padding(20)
@@ -441,9 +487,13 @@ struct AddPastSessionSheet: View {
 struct TrainingCalendarSheet: View {
     @EnvironmentObject var vm: AppViewModel
     @Environment(\.dismiss) var dismiss
-    let onSelectSession: (Session) -> Void
+
+    enum Mode { case view, add }
+    let mode: Mode
+    let onSelectDate: (Date) -> Void
 
     @State private var displayMonth = Date()
+    @State private var selectedDate: Date? = nil
     private let cal = Calendar(identifier: .gregorian)
 
     private var daysInMonth: [Date?] {
@@ -543,8 +593,34 @@ struct TrainingCalendarSheet: View {
                 .padding(.horizontal, 16)
 
                 Spacer()
+
+                // 記録なし日付が選択されている時の確認ボタン
+                if let selected = selectedDate {
+                    let f: DateFormatter = {
+                        let f = DateFormatter()
+                        f.locale = Locale(identifier: "ja_JP")
+                        f.dateFormat = "M月d日"
+                        return f
+                    }()
+                    Button {
+                        onSelectDate(selected)
+                        dismiss()
+                    } label: {
+                        Text("\(f.string(from: selected))の記録を追加")
+                            .font(.gridHeadline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.gridAccent)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: selectedDate == nil)
         .preferredColorScheme(.dark)
     }
 
@@ -554,16 +630,31 @@ struct TrainingCalendarSheet: View {
         let isToday = cal.isDateInToday(date)
         let isFuture = date > Date()
 
+        let isPast = date < Date() && !isToday
+        let isSelectable = mode == .add ? isPast : (s != nil && !isFuture)
+        let isSelected = selectedDate.map { cal.isDate($0, inSameDayAs: date) } ?? false
+
         return Button {
-            guard !isFuture else { return }
-            if let s {
-                onSelectSession(s)
+            guard isSelectable else { return }
+            if mode == .add && !hasLog {
+                // 記録なし → 選択状態へ（同じ日を再タップで解除）
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    selectedDate = isSelected ? nil : date
+                }
+            } else {
+                // 記録あり → 即時確定
+                onSelectDate(date)
                 dismiss()
             }
         } label: {
             ZStack {
+                // 選択中（記録なし）
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gridAccent.opacity(0.35))
+                }
                 // トレーニング記録あり → アクセントカラー背景
-                if hasLog {
+                else if hasLog {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gridAccent.opacity(0.25))
                 }
@@ -575,12 +666,13 @@ struct TrainingCalendarSheet: View {
 
                 VStack(spacing: 2) {
                     Text("\(cal.component(.day, from: date))")
-                        .font(.system(size: 15, weight: hasLog ? .semibold : .regular))
+                        .font(.system(size: 15, weight: (hasLog || isSelected) ? .semibold : .regular))
                         .foregroundColor(
-                            isFuture ? .gridTextTertiary :
-                            hasLog   ? .gridAccent :
-                            isToday  ? .gridTextPrimary :
-                                       .gridTextSecondary
+                            isFuture   ? .gridTextTertiary :
+                            isSelected ? .white :
+                            hasLog     ? .gridAccent :
+                            isToday    ? .gridTextPrimary :
+                                         .gridTextSecondary
                         )
 
                     // ログありの場合は小さいドット
@@ -593,7 +685,7 @@ struct TrainingCalendarSheet: View {
                 .frame(height: 44)
             }
         }
-        .disabled(isFuture)
+        .disabled(!isSelectable)
     }
 }
 

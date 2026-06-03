@@ -17,12 +17,14 @@
 		349353F4343CD00C350FDC34 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4998614C9448B73E946DC678 /* SessionTimelineView.swift */; };
 		4B6937E7B8119910E76E85CE /* EditItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1C006CE990B8B739A073F6 /* EditItemView.swift */; };
 		5304E32AED34E3735BE53E00 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */; };
+		5A72C12298837C5EACF48B1B /* PastSessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */; };
 		676EC904819263C7381A55E3 /* WorkoutEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29DAB92B22AF980D5B4C853B /* WorkoutEntry.swift */; };
 		72DC2B1EA295A3FEA72A6AB0 /* ItemFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F419ECEE284112687084156 /* ItemFormView.swift */; };
 		7F3A36A4B66612F4E1E79845 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24929EE7E57DA81A00BED4A0 /* Assets.xcassets */; };
 		859265698882E411297BB412 /* AddItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434F85E6D056F07CCFDB571B /* AddItemView.swift */; };
 		958872960D57D5C520D587EC /* LogTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECCD2570E5A78031CDA5457 /* LogTabView.swift */; };
 		9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECC8A5850629A6793508FB6 /* SystemView.swift */; };
+		A2F328D4D441C0CB2FDFE5F7 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C155F24F7097B09754F121 /* CameraView.swift */; };
 		B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */; };
 		C64120AAABA1534901C6654C /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B1C4ED818F8C451F3892BB /* Session.swift */; };
 		E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD33BF1B497BF634D49AA04 /* DataView.swift */; };
@@ -39,10 +41,12 @@
 		2BC595BAE93DA8F65CC0F0C4 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
 		434F85E6D056F07CCFDB571B /* AddItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddItemView.swift; sourceTree = "<group>"; };
 		4998614C9448B73E946DC678 /* SessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineView.swift; sourceTree = "<group>"; };
+		4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PastSessionDetailView.swift; sourceTree = "<group>"; };
 		4F419ECEE284112687084156 /* ItemFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemFormView.swift; sourceTree = "<group>"; };
 		4F4B10FD50A291D92412ACDF /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		5066B8042A69784B9490E02E /* ViewItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewItemView.swift; sourceTree = "<group>"; };
 		57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GRIDApp.swift; sourceTree = "<group>"; };
+		58C155F24F7097B09754F121 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		5D4CF87F750C5513D79CABD3 /* AddMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMenuView.swift; sourceTree = "<group>"; };
 		964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GRIDTabBar.swift; sourceTree = "<group>"; };
 		9D3D6971D3910006264544D7 /* WorkoutSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSet.swift; sourceTree = "<group>"; };
@@ -109,6 +113,7 @@
 				434F85E6D056F07CCFDB571B /* AddItemView.swift */,
 				5D4CF87F750C5513D79CABD3 /* AddMenuView.swift */,
 				EECCD2570E5A78031CDA5457 /* LogTabView.swift */,
+				4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */,
 				4998614C9448B73E946DC678 /* SessionTimelineView.swift */,
 			);
 			path = Log;
@@ -147,6 +152,7 @@
 		880BB3CB2050E604564D49E8 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				58C155F24F7097B09754F121 /* CameraView.swift */,
 				964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */,
 				1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */,
 			);
@@ -224,11 +230,11 @@
 				LastUpgradeCheck = 1600;
 			};
 			buildConfigurationList = 17E1F3EB9CBBD08FB639D390 /* Build configuration list for PBXProject "GRID" */;
-			developmentRegion = en;
+			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
-				en,
+				ja,
 			);
 			mainGroup = 881D0C1E47F66661A234A1E2;
 			minimizedProjectReferenceProxies = 1;
@@ -262,6 +268,7 @@
 				1536622C41CBDBD3DE849803 /* AddMenuView.swift in Sources */,
 				080745117FB0E76EC0650FE9 /* AppViewModel.swift in Sources */,
 				14D248EB9923D13B6955401B /* CSVExporter.swift in Sources */,
+				A2F328D4D441C0CB2FDFE5F7 /* CameraView.swift in Sources */,
 				5304E32AED34E3735BE53E00 /* Color+Theme.swift in Sources */,
 				E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */,
 				4B6937E7B8119910E76E85CE /* EditItemView.swift in Sources */,
@@ -272,6 +279,7 @@
 				958872960D57D5C520D587EC /* LogTabView.swift in Sources */,
 				FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */,
 				083DF7F18611C5EF4023D1CE /* NewItemView.swift in Sources */,
+				5A72C12298837C5EACF48B1B /* PastSessionDetailView.swift in Sources */,
 				C64120AAABA1534901C6654C /* Session.swift in Sources */,
 				349353F4343CD00C350FDC34 /* SessionTimelineView.swift in Sources */,
 				9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */,

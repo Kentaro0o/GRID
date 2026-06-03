@@ -70,6 +70,11 @@ class AppViewModel: ObservableObject {
         save()
     }
 
+    func deleteSession(_ session: Session) {
+        sessions.removeAll { $0.id == session.id }
+        save()
+    }
+
     func updateSession(_ session: Session) {
         if let i = sessions.firstIndex(where: { $0.id == session.id }) {
             sessions[i] = session
