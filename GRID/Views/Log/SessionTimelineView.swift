@@ -663,6 +663,7 @@ struct TrainingCalendarSheet: View {
                         .foregroundColor(.gridTextPrimary)
                     Spacer()
                     Button("閉じる") { dismiss() }
+                        //.font(.gridBody)
                         .foregroundColor(.gridAccent)
                 }
                 .padding(.horizontal, 24)
