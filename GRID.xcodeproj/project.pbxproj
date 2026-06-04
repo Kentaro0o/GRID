@@ -19,6 +19,7 @@
 		5304E32AED34E3735BE53E00 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */; };
 		5A72C12298837C5EACF48B1B /* PastSessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */; };
 		676EC904819263C7381A55E3 /* WorkoutEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29DAB92B22AF980D5B4C853B /* WorkoutEntry.swift */; };
+		6A543DD462B1703741F1CFC3 /* WeightListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA54202C3780D3F9FEDEBE7 /* WeightListView.swift */; };
 		72DC2B1EA295A3FEA72A6AB0 /* ItemFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F419ECEE284112687084156 /* ItemFormView.swift */; };
 		7F3A36A4B66612F4E1E79845 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24929EE7E57DA81A00BED4A0 /* Assets.xcassets */; };
 		859265698882E411297BB412 /* AddItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434F85E6D056F07CCFDB571B /* AddItemView.swift */; };
@@ -62,6 +63,7 @@
 		EEB553F479F21987390EF421 /* CSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVExporter.swift; sourceTree = "<group>"; };
 		EECCD2570E5A78031CDA5457 /* LogTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogTabView.swift; sourceTree = "<group>"; };
 		F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
+		FDA54202C3780D3F9FEDEBE7 /* WeightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -117,6 +119,7 @@
 				EECCD2570E5A78031CDA5457 /* LogTabView.swift */,
 				4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */,
 				4998614C9448B73E946DC678 /* SessionTimelineView.swift */,
+				FDA54202C3780D3F9FEDEBE7 /* WeightListView.swift */,
 			);
 			path = Log;
 			sourceTree = "<group>";
@@ -289,6 +292,7 @@
 				9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */,
 				26527940179FE4C9C703A5D9 /* ViewItemView.swift in Sources */,
 				FE699E360B1371C9BFE8B91D /* WeightLineChart.swift in Sources */,
+				6A543DD462B1703741F1CFC3 /* WeightListView.swift in Sources */,
 				676EC904819263C7381A55E3 /* WorkoutEntry.swift in Sources */,
 				2AAE7144A4452B0A6B940B07 /* WorkoutSet.swift in Sources */,
 			);

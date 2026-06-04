@@ -28,6 +28,7 @@ struct SessionTimelineView: View {
     @State private var cameraImageData: Data? = nil
     @State private var showPhotoViewer = false
     @State private var photoViewerInitialIndex = 0
+    @State private var showWeightList = false
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
 
     // ─── チャート高速スクロール ───
@@ -180,6 +181,16 @@ struct SessionTimelineView: View {
                 }
             }
             Button("キャンセル", role: .cancel) { sessionToDelete = nil }
+        }
+        .sheet(isPresented: $showWeightList) {
+            WeightListView { session in
+                if let idx = sessions.firstIndex(where: { $0.id == session.id }) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        currentIndex = idx
+                    }
+                }
+            }
+            .environmentObject(vm)
         }
         .sheet(isPresented: $showAddCalendar) {
             TrainingCalendarSheet(mode: .add) { date in
@@ -510,12 +521,21 @@ struct SessionTimelineView: View {
                     }
                 }
             }
-            .onEnded { _ in
+            .onEnded { value in
                 longPressWork?.cancel()
                 longPressWork = nil
+
+                let wasTap = !isFastScroll
+                    && abs(value.translation.width) < 8
+                    && abs(value.translation.height) < 8
+
                 isFastScroll = false
                 withAnimation(.easeInOut(duration: 0.45)) {
                     isPurple = false
+                }
+
+                if wasTap {
+                    showWeightList = true
                 }
             }
     }
