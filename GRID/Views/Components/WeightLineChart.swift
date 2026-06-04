@@ -7,13 +7,22 @@ struct WeightLineChart: View {
     var centerIndex: Int = 0
     var accentColor: Color = .gridAccent
     var backgroundColor: Color = .gridBg
+    /// Canvas 上部の余白（上方向にはみ出す量）
+    var overflowTop: CGFloat = 0
+    /// Canvas 下部の余白（下方向にはみ出す量）
+    var overflowBottom: CGFloat = 0
 
     private let spacing: CGFloat = 64
 
     @State private var animatedCenter: Double = 0
 
-    private var minVal: Double { (data.map { $0.1 }.min() ?? 70) - 3 }
-    private var maxVal: Double { (data.map { $0.1 }.max() ?? 90) + 3 }
+    // 現在地点の体重を中心に ±0.5kg の固定レンジ
+    private var centerWeight: Double {
+        guard data.indices.contains(centerIndex) else { return 70 }
+        return data[centerIndex].1
+    }
+    private var minVal: Double { centerWeight - 1.5 }
+    private var maxVal: Double { centerWeight + 1.5 }
 
     var body: some View {
         Canvas { ctx, size in
@@ -79,11 +88,12 @@ struct WeightLineChart: View {
 
     private func points(size: CGSize, center: Double) -> [CGPoint] {
         let cx    = size.width / 2
-        let h     = size.height
+        let h     = size.height - overflowTop - overflowBottom  // 可視描画エリアの高さ
         let range = maxVal - minVal
         return data.enumerated().map { i, pt in
             let x = cx + CGFloat(Double(i) - center) * spacing
-            let y = h - h * CGFloat((pt.1 - minVal) / range) * 0.8 - h * 0.1
+            let yInVisible = h - h * CGFloat((pt.1 - minVal) / range) * 0.8 - h * 0.1
+            let y = overflowTop + yInVisible
             return CGPoint(x: x, y: y)
         }
     }

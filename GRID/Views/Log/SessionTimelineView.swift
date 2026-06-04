@@ -59,6 +59,11 @@ struct SessionTimelineView: View {
         ZStack {
             background.ignoresSafeArea()
 
+            // ── チャートレイヤー（カード・体重ピルの後ろ）──
+            // ZStack 内で UI VStack より先に置くことで常に背面になる
+            chartLayer
+
+            // ── UI レイヤー ──
             VStack(spacing: 0) {
                 header
 
@@ -78,21 +83,11 @@ struct SessionTimelineView: View {
 
                 Spacer()
 
-                // ─── チャート (中央揃え) ───
-                WeightLineChart(
-                    data: vm.weightChartData,
-                    knownWeightDates: Set(vm.sessions.compactMap { $0.bodyWeight != nil ? $0.date : nil }),
-                    centerIndex: chartCenterIndex,
-                    accentColor: isPurple ? .white.opacity(0.85) : .gridAccent,
-                    backgroundColor: isPurple
-                        ? Color(red: 0.185, green: 0.170, blue: 0.475)
-                        : .gridBg
-                )
-                .frame(height: 90)
-                .scaleEffect(isFastScroll ? 1.04 : 1.0)
-                .animation(.easeInOut(duration: 0.2), value: isFastScroll)
-                .contentShape(Rectangle())
-                .gesture(chartFastScrollGesture)
+                // チャートのジェスチャー受け取り用（チャート本体は chartLayer に移動）
+                Color.clear
+                    .frame(height: 90)
+                    .contentShape(Rectangle())
+                    .gesture(chartFastScrollGesture)
 
                 // ─── 体重ピル ───
                 HStack {
@@ -370,14 +365,14 @@ struct SessionTimelineView: View {
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .background(
             Group {
-                if isCurrent {
+                if isCurrent && !isPurple {
                     ZStack {
                         RoundedRectangle(cornerRadius: 22)
-                            .fill(isPurple ? Color.white.opacity(0.04) : Color.gridCard.opacity(0.5))
+                            .fill(Color.gridCard.opacity(0.5))
                             .offset(x: -12, y: -6)
                             .scaleEffect(0.94)
                         RoundedRectangle(cornerRadius: 22)
-                            .fill(isPurple ? Color.white.opacity(0.07) : Color.gridCard.opacity(0.7))
+                            .fill(Color.gridCard.opacity(0.7))
                             .offset(x: -6, y: -3)
                             .scaleEffect(0.97)
                     }
@@ -451,6 +446,35 @@ struct SessionTimelineView: View {
         }
         .buttonStyle(.plain)
         .animation(.easeInOut(duration: 0.35), value: isPurple)
+    }
+
+    // MARK: - チャートレイヤー（ZStack の背面に固定）
+
+    private var chartLayer: some View {
+        // UI VStack と同じ Spacer + 下部固定エリアで高さを合わせる
+        // 上 160pt はカード下へ、下 80pt は体重ピル下へ潜り込む
+        VStack(spacing: 0) {
+            Spacer()
+            WeightLineChart(
+                data: vm.weightChartData,
+                knownWeightDates: Set(vm.sessions.compactMap { $0.bodyWeight != nil ? $0.date : nil }),
+                centerIndex: chartCenterIndex,
+                accentColor: isPurple ? .white.opacity(0.85) : .gridAccent,
+                backgroundColor: isPurple
+                    ? Color(red: 0.185, green: 0.170, blue: 0.475)
+                    : .gridBg,
+                overflowTop: 160,
+                overflowBottom: 80
+            )
+            // Canvas は 330pt（90 + 160 + 80）
+            // bottom の 60pt を下方向に伸ばしつつ、layout は 90pt に収める
+            .frame(height: 330)
+            .alignmentGuide(.bottom) { d in d[.bottom] - 80 }
+            .frame(height: 90, alignment: .bottom)
+            // 体重ピルエリアのプレースホルダー（高さを UI レイヤーと合わせる）
+            Color.clear.frame(height: 170)
+        }
+        .allowsHitTesting(false)
     }
 
     // MARK: - チャート高速スクロールジェスチャー
