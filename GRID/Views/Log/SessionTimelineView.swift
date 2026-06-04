@@ -37,6 +37,8 @@ struct SessionTimelineView: View {
     private let selectionFeedback = UISelectionFeedbackGenerator()
     private let impactFeedback    = UIImpactFeedbackGenerator(style: .heavy)
 
+    // isPurple は isFastScroll と連動（dwell timer は廃止）
+
     private var currentSession: Session? {
         sessions[safe: currentIndex]
     }
@@ -463,6 +465,9 @@ struct SessionTimelineView: View {
                     impactFeedback.prepare()
                     let work = DispatchWorkItem {
                         isFastScroll = true
+                        withAnimation(.easeInOut(duration: 0.45)) {
+                            isPurple = true
+                        }
                         impactFeedback.impactOccurred()
                     }
                     longPressWork = work
@@ -485,22 +490,18 @@ struct SessionTimelineView: View {
                 longPressWork?.cancel()
                 longPressWork = nil
                 isFastScroll = false
+                withAnimation(.easeInOut(duration: 0.45)) {
+                    isPurple = false
+                }
             }
     }
 
     // MARK: - ページ変更ハンドラ
 
     private func onPageChanged(_ newIdx: Int) {
-        dwellTimer?.invalidate()
-        isPurple = false
-
-        let session = sessions[safe: newIdx]
-        guard let session, !Calendar.current.isDateInToday(session.date) else { return }
-
-        dwellTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
-            withAnimation(.easeInOut(duration: 0.45)) {
-                isPurple = true
-            }
+        // 高速スクロール中でなければ isPurple はそのまま維持しない
+        if !isFastScroll {
+            dwellTimer?.invalidate()
         }
     }
 }
