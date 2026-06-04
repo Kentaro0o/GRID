@@ -287,15 +287,24 @@ struct SessionTimelineView: View {
     private func sessionCard(session: Session) -> some View {
         let isCurrent = Calendar.current.isDateInToday(session.date)
 
+        let muscleGroups = vm.muscleGroups(for: session)
+
         return VStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("SESSION #\(session.sessionNumber)")
                     .font(.gridSmall)
                     .foregroundColor(isPurple ? .white.opacity(0.65) : .gridTextSecondary)
                     .kerning(1.5)
-                Text(session.dateString)
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.gridTextPrimary)
+                HStack(alignment: .bottom, spacing: 10) {
+                    Text(session.dateString)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.gridTextPrimary)
+
+                    if !muscleGroups.isEmpty {
+                        MuscleGroupChipsView(groups: muscleGroups, isPurple: isPurple)
+                            .padding(.bottom, 5)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -715,6 +724,68 @@ struct TrainingCalendarSheet: View {
             }
         }
         .disabled(!isSelectable)
+    }
+}
+
+// MARK: - MuscleGroupChipsView
+
+struct MuscleGroupChipsView: View {
+    let groups: [MuscleGroup]
+    let isPurple: Bool
+
+    // 1チップの推定幅：1文字(12pt) + 水平padding(10*2) + 少しの余裕
+    private let chipWidth: CGFloat = 34
+    private let spacing: CGFloat = 6
+    private let ellipsisWidth: CGFloat = 30
+
+    var body: some View {
+        GeometryReader { geo in
+            let available = geo.size.width
+            let (visible, hasMore) = visibleCount(in: available)
+
+            HStack(spacing: spacing) {
+                ForEach(groups.prefix(visible)) { group in
+                    chip(group.rawValue)
+                }
+                if hasMore {
+                    chip("…")
+                }
+            }
+        }
+        .frame(height: 24)
+    }
+
+    private func visibleCount(in width: CGFloat) -> (Int, Bool) {
+        let total = groups.count
+        var usedWidth: CGFloat = 0
+        var count = 0
+
+        for i in 0..<total {
+            let w = chipWidth + (count > 0 ? spacing : 0)
+            let remaining = total - i - 1
+            // 次のチップが入らない場合、「…」のスペースが必要
+            let needsEllipsis = remaining > 0
+            let extra = needsEllipsis ? (ellipsisWidth + spacing) : 0
+
+            if usedWidth + w + extra <= width {
+                usedWidth += w
+                count += 1
+            } else {
+                return (count, true)
+            }
+        }
+        return (count, false)
+    }
+
+    @ViewBuilder
+    private func chip(_ label: String) -> some View {
+        Text(label)
+            .font(.gridCaption)
+            .foregroundColor(isPurple ? .white.opacity(0.85) : .gridAccent)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(isPurple ? Color.white.opacity(0.15) : Color.gridAccent.opacity(0.18))
+            .clipShape(Capsule())
     }
 }
 

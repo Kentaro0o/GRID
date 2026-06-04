@@ -7,6 +7,8 @@ struct AddMenuView: View {
     @State private var session: Session
     @State private var showItemPicker = false
     @State private var navPath = NavigationPath()
+    @State private var isEditing = false
+    @FocusState private var memoFocused: Bool
 
     init(session: Session) {
         _session = State(initialValue: session)
@@ -70,46 +72,77 @@ struct AddMenuView: View {
                 .padding(.top, 60)
                 .padding(.bottom, 20)
 
-                // Add Item button
-                Button {
-                    showItemPicker = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle")
-                        Text("種目を追加")
-                            .font(.gridBody)
+                // 種目を追加 / 編集ボタン
+                HStack(spacing: 10) {
+                    Button {
+                        isEditing = false
+                        showItemPicker = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus.circle")
+                            Text("追加")
+                                .font(.gridBody)
+                        }
+                        .foregroundColor(.gridTextPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.gridCardInner)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .foregroundColor(.gridTextPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.gridCardInner)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    if !session.entries.isEmpty {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isEditing.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: isEditing ? "checkmark.circle" : "pencil")
+                                Text(isEditing ? "完了" : "編集")
+                                    .font(.gridBody)
+                            }
+                            .foregroundColor(isEditing ? .white : .gridTextPrimary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(isEditing ? Color.gridAccent : Color.gridCardInner)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 8)
 
                 // Item list
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(entriesByMuscle, id: \.0) { group, entries in
-                            // Section header
-                            HStack {
-                                Text(group.rawValue)
-                                    .font(.gridSmall)
-                                    .foregroundColor(.gridTextSecondary)
-                                    .kerning(1.2)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.top, 16)
-                            .padding(.bottom, 6)
-
+                List {
+                    ForEach(entriesByMuscle, id: \.0) { group, entries in
+                        Section {
                             ForEach(entries) { entry in
                                 entryRow(entry: entry)
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
                             }
+                            .onMove { from, to in
+                                moveEntries(in: group, from: from, to: to)
+                            }
+                            .onDelete { indexSet in
+                                deleteEntries(in: group, at: indexSet)
+                            }
+                        } header: {
+                            Text(group.rawValue)
+                                .font(.gridSmall)
+                                .foregroundColor(.gridTextSecondary)
+                                .kerning(1.2)
+                                .padding(.horizontal, 24)
+                                .padding(.top, 16)
+                                .padding(.bottom, 6)
+                                .textCase(nil)
+                                .listRowInsets(EdgeInsets())
                         }
+                    }
 
-                        // Memo
+                    // Memo
+                    Section {
                         VStack(alignment: .leading, spacing: 8) {
                             TextEditor(text: $session.memo)
                                 .font(.gridBody)
@@ -117,6 +150,7 @@ struct AddMenuView: View {
                                 .frame(minHeight: 80)
                                 .padding(12)
                                 .scrollContentBackground(.hidden)
+                                .focused($memoFocused)
                                 .background(Color.gridCardInner)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
@@ -133,13 +167,28 @@ struct AddMenuView: View {
                                 )
                         }
                         .padding(.horizontal, 24)
-                        .padding(.top, 20)
+                        .padding(.top, 8)
                         .padding(.bottom, 100)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .environment(\.editMode, .constant(isEditing ? .active : .inactive))
             }
         }
         .navigationBarHidden(true)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完了") {
+                    memoFocused = false
+                }
+                .foregroundColor(.gridAccent)
+            }
+        }
         .sheet(isPresented: $showItemPicker) {
             ItemPickerSheet(session: $session)
                 .environmentObject(vm)
@@ -154,30 +203,64 @@ struct AddMenuView: View {
     private func entryRow(entry: WorkoutEntry) -> some View {
         let itemName = vm.item(for: entry.itemId)?.name ?? "Unknown"
         return VStack(spacing: 0) {
-            Button {
-                navPath.append(entry)
-            } label: {
-                HStack(spacing: 14) {
-                    Image(systemName: "line.3.horizontal")
-                        .foregroundColor(.gridTextTertiary)
-                    Text(itemName)
-                        .font(.gridBody)
-                        .foregroundColor(.gridTextPrimary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13))
-                        .foregroundColor(.gridTextTertiary)
+            HStack(spacing: 14) {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundColor(.gridTextTertiary)
+                Text(itemName)
+                    .font(.gridBody)
+                    .foregroundColor(.gridTextPrimary)
+                Spacer()
+                if isEditing {
+                    // 編集モード：削除ボタン（List の .onDelete と連動する赤丸は自動表示）
+                    EmptyView()
+                } else {
+                    Button {
+                        navPath.append(entry)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13))
+                            .foregroundColor(.gridTextTertiary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if !isEditing {
+                    navPath.append(entry)
+                }
+            }
 
             Divider()
                 .background(Color.gridCardInner)
                 .padding(.horizontal, 24)
         }
+    }
+
+    private func moveEntries(in group: MuscleGroup, from source: IndexSet, to destination: Int) {
+        // グループ内のentryのidリストを取得
+        let groupEntryIds = entriesByMuscle.first(where: { $0.0 == group })?.1.map { $0.id } ?? []
+        var ids = groupEntryIds
+        ids.move(fromOffsets: source, toOffset: destination)
+
+        // session.entries内でこのグループのエントリのみ並び替え
+        var newEntries = session.entries.filter { e in !groupEntryIds.contains(e.id) }
+        let sortedGroupEntries = ids.compactMap { id in session.entries.first { $0.id == id } }
+
+        // 元の位置（最初のグループエントリのインデックス）に挿入
+        let insertIndex = session.entries.firstIndex(where: { groupEntryIds.contains($0.id) }) ?? newEntries.count
+        newEntries.insert(contentsOf: sortedGroupEntries, at: min(insertIndex, newEntries.count))
+        session.entries = newEntries
+        vm.updateSession(session)
+    }
+
+    private func deleteEntries(in group: MuscleGroup, at indexSet: IndexSet) {
+        let groupEntries = entriesByMuscle.first(where: { $0.0 == group })?.1 ?? []
+        let idsToDelete = indexSet.map { groupEntries[$0].id }
+        session.entries.removeAll { idsToDelete.contains($0.id) }
+        vm.updateSession(session)
     }
 }
 
