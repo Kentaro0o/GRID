@@ -30,6 +30,13 @@ struct SessionTimelineView: View {
     @State private var photoViewerInitialIndex = 0
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
 
+    // ─── チャート高速スクロール ───
+    @State private var isFastScroll = false
+    @State private var chartDragBaseIndex: Int = 0
+    @State private var longPressWork: DispatchWorkItem? = nil
+    private let selectionFeedback = UISelectionFeedbackGenerator()
+    private let impactFeedback    = UIImpactFeedbackGenerator(style: .heavy)
+
     private var currentSession: Session? {
         sessions[safe: currentIndex]
     }
@@ -80,6 +87,10 @@ struct SessionTimelineView: View {
                         : .gridBg
                 )
                 .frame(height: 90)
+                .scaleEffect(isFastScroll ? 1.04 : 1.0)
+                .animation(.easeInOut(duration: 0.2), value: isFastScroll)
+                .contentShape(Rectangle())
+                .gesture(chartFastScrollGesture)
 
                 // ─── 体重ピル ───
                 HStack {
@@ -438,6 +449,43 @@ struct SessionTimelineView: View {
         }
         .buttonStyle(.plain)
         .animation(.easeInOut(duration: 0.35), value: isPurple)
+    }
+
+    // MARK: - チャート高速スクロールジェスチャー
+
+    private var chartFastScrollGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                // 長押しタイマー起動（初回のみ）
+                if longPressWork == nil && !isFastScroll {
+                    chartDragBaseIndex = currentIndex
+                    selectionFeedback.prepare()
+                    impactFeedback.prepare()
+                    let work = DispatchWorkItem {
+                        isFastScroll = true
+                        impactFeedback.impactOccurred()
+                    }
+                    longPressWork = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+                }
+
+                // 高速モード中のみ追従
+                guard isFastScroll else { return }
+                let delta  = value.location.x - value.startLocation.x
+                let offset = Int(-delta / 16)
+                let newIdx = max(0, min(sessions.count - 1, chartDragBaseIndex + offset))
+                if newIdx != currentIndex {
+                    selectionFeedback.selectionChanged()
+                    withAnimation(.easeInOut(duration: 0.12)) {
+                        currentIndex = newIdx
+                    }
+                }
+            }
+            .onEnded { _ in
+                longPressWork?.cancel()
+                longPressWork = nil
+                isFastScroll = false
+            }
     }
 
     // MARK: - ページ変更ハンドラ
