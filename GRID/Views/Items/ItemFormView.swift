@@ -39,6 +39,9 @@ struct ItemFormView: View {
                     }
                     .pickerStyle(.menu)
                     .foregroundColor(.gridTextSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .fixedSize()
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 14)

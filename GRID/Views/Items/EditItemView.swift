@@ -12,6 +12,8 @@ struct EditItemView: View {
     @State private var muscleGroup: MuscleGroup
     @State private var showDeleteConfirm = false
 
+    @FocusState private var isAnyFieldFocused: Bool
+
     init(item: Item) {
         self.item = item
         _name             = State(initialValue: item.name)
@@ -25,21 +27,36 @@ struct EditItemView: View {
             Color.gridBg.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Text("EDIT")
-                        .font(.system(size: 32, weight: .black))
-                        .foregroundColor(.gridTextPrimary)
-                    Spacer()
-                    Button("キャンセル") { dismiss() }
-                        .font(.gridBody)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 10)
-                        .background(Color.gridAccent.opacity(0.7))
-                        .clipShape(Capsule())
+                // ─── Header：キャンセル ｜ /EDIT（中央）｜ 保存 ───
+                ZStack {
+                    HStack(spacing: 0) {
+                        Text("/")
+                            .font(.system(size: 32, weight: .black))
+                            .foregroundColor(.gridDanger)
+                        Text("EDIT")
+                            .font(.system(size: 32, weight: .black))
+                            .foregroundColor(.gridTextPrimary)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    HStack {
+                        Button("キャンセル") { dismiss() }
+                            .font(.gridBody)
+                            .foregroundColor(.gridAccent)
+
+                        Spacer()
+
+                        Button("保存") { saveItem() }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(name.isEmpty ? .gridTextTertiary : .white)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .background(name.isEmpty ? Color.gridCard : Color.gridAccent)
+                            .clipShape(Capsule())
+                            .disabled(name.isEmpty)
+                    }
+                    .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, 24)
                 .padding(.top, 60)
                 .padding(.bottom, 24)
 
@@ -52,42 +69,26 @@ struct EditItemView: View {
                             muscleGroup: $muscleGroup
                         )
 
-                        // Save button
+                        // ─── 削除ボタン ───
                         Button {
-                            var updated = item
-                            updated.name             = name
-                            updated.type             = type
-                            updated.restTimerSeconds = restTimerSeconds
-                            updated.muscleGroup      = muscleGroup
-                            vm.updateItem(updated)
-                            dismiss()
+                            showDeleteConfirm = true
                         } label: {
-                            Text("保存")
-                                .font(.gridHeadline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.gridAccent)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                            Text("削除")
+                                .font(.system(size: 17, weight: .regular))
+                                .foregroundColor(.gridDanger)
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.top, 48)
 
-                        Spacer().frame(height: 60)
+                        Spacer().frame(height: 100)
                     }
                 }
-
-                // Delete button
-                Button {
-                    showDeleteConfirm = true
-                } label: {
-                    Text("- ITEM")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.gridDanger)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                }
-                .background(Color.gridBg)
-                .padding(.bottom, 8)
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完了") { isAnyFieldFocused = false }
+                    .foregroundColor(.gridAccent)
             }
         }
         .alert("削除しますか？", isPresented: $showDeleteConfirm) {
@@ -99,6 +100,17 @@ struct EditItemView: View {
         } message: {
             Text("\(item.name) を削除します。この操作は取り消せません。")
         }
+    }
+
+    private func saveItem() {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        var updated = item
+        updated.name             = name
+        updated.type             = type
+        updated.restTimerSeconds = restTimerSeconds
+        updated.muscleGroup      = muscleGroup
+        vm.updateItem(updated)
+        dismiss()
     }
 }
 

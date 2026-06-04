@@ -42,6 +42,19 @@ class AppViewModel: ObservableObject {
         items.filter { $0.muscleGroup == group }
     }
 
+    /// グループ内でのアイテム順序変更（List の onMove 用）
+    func moveItems(in group: MuscleGroup, from source: IndexSet, to destination: Int) {
+        // グループ内の items を取得（元のインデックス付き）
+        let groupIndices = items.indices.filter { items[$0].muscleGroup == group }
+        var groupItems   = groupIndices.map { items[$0] }
+        groupItems.move(fromOffsets: source, toOffset: destination)
+        // 変更後の順序を items 配列へ反映
+        for (offset, globalIdx) in groupIndices.enumerated() {
+            items[globalIdx] = groupItems[offset]
+        }
+        save()
+    }
+
     // MARK: - Session operations
 
     var todaySession: Session? {

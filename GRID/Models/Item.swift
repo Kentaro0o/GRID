@@ -15,7 +15,6 @@ enum ItemType: String, Codable, CaseIterable {
     case freeWeight = "フリーウェイト"
     case machine    = "マシン"
     case bodyweight = "自重"
-    case cable      = "ケーブル"
 }
 
 struct Item: Identifiable, Codable, Equatable {
@@ -31,7 +30,7 @@ struct Item: Identifiable, Codable, Equatable {
         Item(name: "ディップス",     type: .bodyweight, restTimerSeconds: 90,  muscleGroup: .chest),
         Item(name: "ダンベルフライ", type: .freeWeight, restTimerSeconds: 90,  muscleGroup: .chest),
         Item(name: "デッドリフト",   type: .freeWeight, restTimerSeconds: 180, muscleGroup: .back),
-        Item(name: "ラットプルダウン", type: .cable,    restTimerSeconds: 90,  muscleGroup: .back),
+        Item(name: "ラットプルダウン", type: .machine,  restTimerSeconds: 90,  muscleGroup: .back),
         Item(name: "サイドレイズ",   type: .freeWeight, restTimerSeconds: 90,  muscleGroup: .shoulder),
         Item(name: "ショルダープレス", type: .freeWeight, restTimerSeconds: 120, muscleGroup: .shoulder),
         Item(name: "バーベルカール", type: .freeWeight, restTimerSeconds: 90,  muscleGroup: .arm),

@@ -204,8 +204,6 @@ struct AddMenuView: View {
         let itemName = vm.item(for: entry.itemId)?.name ?? "Unknown"
         return VStack(spacing: 0) {
             HStack(spacing: 14) {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundColor(.gridTextTertiary)
                 Text(itemName)
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)

@@ -9,13 +9,15 @@ struct NewItemView: View {
     @State private var restTimerSeconds = 120
     @State private var muscleGroup      = MuscleGroup.chest
 
+    @FocusState private var isAnyFieldFocused: Bool
+
     var body: some View {
         ZStack {
             Color.gridBg.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                HStack {
+                // Header：キャンセル ｜ +ITEM（中央）｜ 保存
+                ZStack {
                     HStack(spacing: 4) {
                         Text("+")
                             .font(.system(size: 32, weight: .black))
@@ -24,16 +26,28 @@ struct NewItemView: View {
                             .font(.system(size: 32, weight: .black))
                             .foregroundColor(.gridTextPrimary)
                     }
-                    Spacer()
-                    Button("キャンセル") { dismiss() }
-                        .font(.gridBody)
-                        .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+
+                    HStack {
+                        Button("キャンセル") { dismiss() }
+                            .font(.gridBody)
+                            .foregroundColor(.gridAccent)
+
+                        Spacer()
+
+                        Button("保存") {
+                            saveItem()
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(name.isEmpty ? .gridTextTertiary : .white)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
-                        .background(Color.gridAccent.opacity(0.7))
+                        .background(name.isEmpty ? Color.gridCard : Color.gridAccent)
                         .clipShape(Capsule())
+                        .disabled(name.isEmpty)
+                    }
+                    .padding(.horizontal, 24)
                 }
-                .padding(.horizontal, 24)
                 .padding(.top, 60)
                 .padding(.bottom, 24)
 
@@ -45,35 +59,30 @@ struct NewItemView: View {
                             restTimerSeconds: $restTimerSeconds,
                             muscleGroup: $muscleGroup
                         )
-
-                        // Save button
-                        Button {
-                            guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                            let item = Item(
-                                name: name,
-                                type: type,
-                                restTimerSeconds: restTimerSeconds,
-                                muscleGroup: muscleGroup
-                            )
-                            vm.addItem(item)
-                            dismiss()
-                        } label: {
-                            Text("保存")
-                                .font(.gridHeadline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(name.isEmpty ? Color.gridAccent.opacity(0.4) : Color.gridAccent)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                        }
-                        .disabled(name.isEmpty)
-                        .padding(.horizontal, 20)
-
                         Spacer().frame(height: 100)
                     }
                 }
             }
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完了") { isAnyFieldFocused = false }
+                    .foregroundColor(.gridAccent)
+            }
+        }
+    }
+
+    private func saveItem() {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let item = Item(
+            name: name,
+            type: type,
+            restTimerSeconds: restTimerSeconds,
+            muscleGroup: muscleGroup
+        )
+        vm.addItem(item)
+        dismiss()
     }
 }
 
