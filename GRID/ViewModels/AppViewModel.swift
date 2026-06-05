@@ -5,6 +5,9 @@ class AppViewModel: ObservableObject {
     @Published var items: [Item] = []
     @Published var sessions: [Session] = []
 
+    /// DATAタブなどから LOG タブの特定セッションへジャンプするためのリクエスト
+    @Published var navigateToSessionId: UUID? = nil
+
     private let itemsKey   = "grid_items"
     private let sessionsKey = "grid_sessions"
 
@@ -129,28 +132,58 @@ class AppViewModel: ObservableObject {
         let recentMonthMax: Double?   // nil = 直近1ヶ月にデータなし
     }
 
-    /// 種目ごとの MAX 重量（全期間 & 直近1ヶ月）
+    /// 種目ごとの MAX 重量（全期間 & 直近1ヶ月）※reps=0 は除外
     func exerciseStats(for group: MuscleGroup) -> [ExerciseStat] {
         let targetItems = items.filter { $0.muscleGroup == group }
         let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
 
         return targetItems.compactMap { item in
-            // 全セッションからこの種目のセットを集める
             let allSets = sessions.flatMap { session -> [(Date, Double)] in
                 session.entries
                     .filter { $0.itemId == item.id }
                     .flatMap { entry in
-                        entry.sets.map { (session.date, $0.weight) }
+                        entry.sets
+                            .filter { $0.reps > 0 }   // 0回は除外
+                            .map { (session.date, $0.weight) }
                     }
             }
             guard !allSets.isEmpty else { return nil }
 
-            let allTimeMax    = allSets.map(\.1).max() ?? 0
-            let recentSets    = allSets.filter { $0.0 >= oneMonthAgo }
-            let recentMax     = recentSets.isEmpty ? nil : recentSets.map(\.1).max()
+            let allTimeMax = allSets.map(\.1).max() ?? 0
+            let recentSets = allSets.filter { $0.0 >= oneMonthAgo }
+            let recentMax  = recentSets.isEmpty ? nil : recentSets.map(\.1).max()
 
             return ExerciseStat(item: item, allTimeMax: allTimeMax, recentMonthMax: recentMax)
         }
+    }
+
+    /// 種目ごとの日付別セッションログ
+    struct ExerciseSessionLog: Identifiable {
+        let id: UUID        // session.id
+        let date: Date
+        let dateString: String
+        let maxWeight: Double   // そのセッション内のこの種目の最大重量
+        let sets: [WorkoutSet]  // reps>0 のセットのみ
+        let memo: String        // WorkoutEntry の memo
+    }
+
+    /// ある種目の日付別ログ一覧（古い順）※reps=0 は除外
+    func sessionLogs(for item: Item) -> [ExerciseSessionLog] {
+        sessions
+            .sorted { $0.date < $1.date }
+            .compactMap { session in
+                guard let entry = session.entries.first(where: { $0.itemId == item.id }) else { return nil }
+                let validSets = entry.sets.filter { $0.reps > 0 }
+                guard let max = validSets.map({ $0.weight }).max() else { return nil }
+                return ExerciseSessionLog(
+                    id: session.id,
+                    date: session.date,
+                    dateString: session.dateString,
+                    maxWeight: max,
+                    sets: validSets,
+                    memo: entry.memo
+                )
+            }
     }
 
     // MARK: - Photo data

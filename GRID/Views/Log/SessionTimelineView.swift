@@ -77,6 +77,7 @@ struct SessionTimelineView: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .allowsHitTesting(!isFastScroll)
                 .frame(height: 380)
                 .onChange(of: currentIndex) { _, newIdx in
                     onPageChanged(newIdx)
@@ -102,7 +103,22 @@ struct SessionTimelineView: View {
         }
         .onAppear {
             _ = vm.ensureTodaySession()  // 今日のセッションが必ず存在する状態にする
-            currentIndex = todayIndex
+            if let targetId = vm.navigateToSessionId,
+               let idx = sessions.firstIndex(where: { $0.id == targetId }) {
+                currentIndex = idx
+                vm.navigateToSessionId = nil
+            } else {
+                currentIndex = todayIndex
+            }
+        }
+        .onChange(of: vm.navigateToSessionId) { _, targetId in
+            guard let targetId else { return }
+            if let idx = sessions.firstIndex(where: { $0.id == targetId }) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentIndex = idx
+                }
+            }
+            vm.navigateToSessionId = nil
         }
         .onChange(of: photoPicker) { _, items in
             Task {
@@ -513,7 +529,7 @@ struct SessionTimelineView: View {
                 // 高速モード中のみ追従
                 guard isFastScroll else { return }
                 let delta  = value.location.x - value.startLocation.x
-                let offset = Int(delta / 16)
+                let offset = Int(-delta / 16)
                 let newIdx = max(0, min(sessions.count - 1, chartDragBaseIndex + offset))
                 if newIdx != currentIndex {
                     selectionFeedback.selectionChanged()

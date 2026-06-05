@@ -24,6 +24,11 @@ struct MainTabView: View {
         .ignoresSafeArea(edges: .bottom)
         .environmentObject(vm)
         .preferredColorScheme(.dark)
+        .onChange(of: vm.navigateToSessionId) { _, id in
+            if id != nil {
+                selectedTab = .log
+            }
+        }
     }
 }
 
