@@ -15,6 +15,7 @@
 		26BEA0BCB834FADA2EA7FA57 /* GRIDTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */; };
 		2AAE7144A4452B0A6B940B07 /* WorkoutSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3D6971D3910006264544D7 /* WorkoutSet.swift */; };
 		349353F4343CD00C350FDC34 /* SessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4998614C9448B73E946DC678 /* SessionTimelineView.swift */; };
+		47E9DE4480420EA5AE543901 /* ExerciseStatsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFF14A2202B39E2BED08F6B0 /* ExerciseStatsSection.swift */; };
 		4B6937E7B8119910E76E85CE /* EditItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1C006CE990B8B739A073F6 /* EditItemView.swift */; };
 		5304E32AED34E3735BE53E00 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */; };
 		5A72C12298837C5EACF48B1B /* PastSessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */; };
@@ -30,6 +31,7 @@
 		C64120AAABA1534901C6654C /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B1C4ED818F8C451F3892BB /* Session.swift */; };
 		DBB01BCCFBC73246C1C9D82A /* PhotoViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31FCB777631A88BFF10FED7 /* PhotoViewerView.swift */; };
 		E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD33BF1B497BF634D49AA04 /* DataView.swift */; };
+		E9A0239B6A02851F3EEAD05A /* PhotoGridSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DABC065D2229BDD38BD3F67 /* PhotoGridSection.swift */; };
 		FB6990ED804B23F5F6222C34 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = B069E0AF5A06DBB6EAEBE9A1 /* Item.swift */; };
 		FE699E360B1371C9BFE8B91D /* WeightLineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */; };
 		FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4B10FD50A291D92412ACDF /* MainTabView.swift */; };
@@ -50,6 +52,7 @@
 		57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GRIDApp.swift; sourceTree = "<group>"; };
 		58C155F24F7097B09754F121 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		5D4CF87F750C5513D79CABD3 /* AddMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMenuView.swift; sourceTree = "<group>"; };
+		5DABC065D2229BDD38BD3F67 /* PhotoGridSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGridSection.swift; sourceTree = "<group>"; };
 		964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GRIDTabBar.swift; sourceTree = "<group>"; };
 		9D3D6971D3910006264544D7 /* WorkoutSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSet.swift; sourceTree = "<group>"; };
 		9ECC8A5850629A6793508FB6 /* SystemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemView.swift; sourceTree = "<group>"; };
@@ -59,6 +62,7 @@
 		BF61F912E5DB2580087493B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C31FCB777631A88BFF10FED7 /* PhotoViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewerView.swift; sourceTree = "<group>"; };
 		CC1C006CE990B8B739A073F6 /* EditItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditItemView.swift; sourceTree = "<group>"; };
+		DFF14A2202B39E2BED08F6B0 /* ExerciseStatsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseStatsSection.swift; sourceTree = "<group>"; };
 		E917C1DE66E82E122411B42D /* GRID.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GRID.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEB553F479F21987390EF421 /* CSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVExporter.swift; sourceTree = "<group>"; };
 		EECCD2570E5A78031CDA5457 /* LogTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogTabView.swift; sourceTree = "<group>"; };
@@ -99,6 +103,8 @@
 			isa = PBXGroup;
 			children = (
 				0AD33BF1B497BF634D49AA04 /* DataView.swift */,
+				DFF14A2202B39E2BED08F6B0 /* ExerciseStatsSection.swift */,
+				5DABC065D2229BDD38BD3F67 /* PhotoGridSection.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -278,6 +284,7 @@
 				5304E32AED34E3735BE53E00 /* Color+Theme.swift in Sources */,
 				E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */,
 				4B6937E7B8119910E76E85CE /* EditItemView.swift in Sources */,
+				47E9DE4480420EA5AE543901 /* ExerciseStatsSection.swift in Sources */,
 				B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */,
 				26BEA0BCB834FADA2EA7FA57 /* GRIDTabBar.swift in Sources */,
 				FB6990ED804B23F5F6222C34 /* Item.swift in Sources */,
@@ -286,6 +293,7 @@
 				FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */,
 				083DF7F18611C5EF4023D1CE /* NewItemView.swift in Sources */,
 				5A72C12298837C5EACF48B1B /* PastSessionDetailView.swift in Sources */,
+				E9A0239B6A02851F3EEAD05A /* PhotoGridSection.swift in Sources */,
 				DBB01BCCFBC73246C1C9D82A /* PhotoViewerView.swift in Sources */,
 				C64120AAABA1534901C6654C /* Session.swift in Sources */,
 				349353F4343CD00C350FDC34 /* SessionTimelineView.swift in Sources */,

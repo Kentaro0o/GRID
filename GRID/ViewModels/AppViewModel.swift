@@ -121,6 +121,58 @@ class AppViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Exercise stats
+
+    struct ExerciseStat {
+        let item: Item
+        let allTimeMax: Double
+        let recentMonthMax: Double?   // nil = 直近1ヶ月にデータなし
+    }
+
+    /// 種目ごとの MAX 重量（全期間 & 直近1ヶ月）
+    func exerciseStats(for group: MuscleGroup) -> [ExerciseStat] {
+        let targetItems = items.filter { $0.muscleGroup == group }
+        let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+
+        return targetItems.compactMap { item in
+            // 全セッションからこの種目のセットを集める
+            let allSets = sessions.flatMap { session -> [(Date, Double)] in
+                session.entries
+                    .filter { $0.itemId == item.id }
+                    .flatMap { entry in
+                        entry.sets.map { (session.date, $0.weight) }
+                    }
+            }
+            guard !allSets.isEmpty else { return nil }
+
+            let allTimeMax    = allSets.map(\.1).max() ?? 0
+            let recentSets    = allSets.filter { $0.0 >= oneMonthAgo }
+            let recentMax     = recentSets.isEmpty ? nil : recentSets.map(\.1).max()
+
+            return ExerciseStat(item: item, allTimeMax: allTimeMax, recentMonthMax: recentMax)
+        }
+    }
+
+    // MARK: - Photo data
+
+    struct PhotoEntry: Identifiable {
+        let id = UUID()
+        let date: Date
+        let imageData: Data
+        let sessionId: UUID
+    }
+
+    /// 全セッションの写真を日付降順で返す
+    var allPhotos: [PhotoEntry] {
+        sessions
+            .sorted { $0.date > $1.date }
+            .flatMap { session in
+                session.photosData.map { data in
+                    PhotoEntry(date: session.date, imageData: data, sessionId: session.id)
+                }
+            }
+    }
+
     // MARK: - Weight chart data
 
     /// 全セッションを対象。bodyWeightがない場合は前後の値から線形補間

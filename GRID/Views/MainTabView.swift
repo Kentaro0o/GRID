@@ -5,25 +5,24 @@ struct MainTabView: View {
     @State private var selectedTab: GRIDTab = .log
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Group {
-                switch selectedTab {
-                case .log:
-                    LogTabView()
-                case .items:
-                    ViewItemView()
-                case .data:
-                    DataView()
-                case .system:
-                    SystemView()
-                }
+        Group {
+            switch selectedTab {
+            case .log:
+                LogTabView()
+            case .items:
+                ViewItemView()
+            case .data:
+                DataView()
+            case .system:
+                SystemView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
             GRIDTabBar(selected: $selectedTab)
         }
-        .environmentObject(vm)
         .ignoresSafeArea(edges: .bottom)
+        .environmentObject(vm)
         .preferredColorScheme(.dark)
     }
 }

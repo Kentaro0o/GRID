@@ -290,6 +290,7 @@ struct SessionTimelineView: View {
         .padding(.horizontal, 24)
         .padding(.top, 60)
         .padding(.bottom, 20)
+        //.background(.red)
         .animation(.easeInOut(duration: 0.3), value: isPurple)
     }
 
