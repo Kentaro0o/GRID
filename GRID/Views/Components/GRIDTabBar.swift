@@ -21,17 +21,20 @@ struct GRIDTabBar: View {
                 .fill(Color.gridTabBar)
         )
         .padding(.horizontal, 20)
-        .padding(.bottom, 8)
+        .padding(.bottom, GRIDLayout.tabBarHomePadding)
     }
 
     private func tabItem(icon: String, label: String, tab: GRIDTab) -> some View {
         let isSelected = selected == tab
         return Button {
-            selected = tab
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selected = tab
+            }
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: isSelected ? .semibold : .regular))
+                    .scaleEffect(isSelected ? 1.1 : 1.0)
                 Text(label)
                     .font(.gridSmall)
                     .kerning(1)
@@ -44,6 +47,7 @@ struct GRIDTabBar: View {
                     if isSelected {
                         RoundedRectangle(cornerRadius: 18)
                             .fill(Color.gridTabSelected)
+                            .transition(.scale(scale: 0.8).combined(with: .opacity))
                     }
                 }
             )
@@ -51,6 +55,7 @@ struct GRIDTabBar: View {
         .buttonStyle(.plain)
     }
 }
+
 
 #Preview {
     ZStack {

@@ -97,7 +97,7 @@ struct SessionTimelineView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
-                .padding(.bottom, 100)
+                .padding(.bottom, GRIDLayout.tabBarBottomPadding)
             }
         }
         .onAppear {
@@ -288,7 +288,7 @@ struct SessionTimelineView: View {
             }
         }
         .padding(.horizontal, 24)
-        .padding(.top, 60)
+        .padding(.top, GRIDLayout.headerTopPadding)
         .padding(.bottom, 20)
         //.background(.red)
         .animation(.easeInOut(duration: 0.3), value: isPurple)
@@ -484,7 +484,7 @@ struct SessionTimelineView: View {
             .alignmentGuide(.bottom) { d in d[.bottom] - 80 }
             .frame(height: 90, alignment: .bottom)
             // 体重ピルエリアのプレースホルダー（高さを UI レイヤーと合わせる）
-            Color.clear.frame(height: 170)
+            Color.clear.frame(height: 210)
         }
         .allowsHitTesting(false)
     }
@@ -513,7 +513,7 @@ struct SessionTimelineView: View {
                 // 高速モード中のみ追従
                 guard isFastScroll else { return }
                 let delta  = value.location.x - value.startLocation.x
-                let offset = Int(-delta / 16)
+                let offset = Int(delta / 16)
                 let newIdx = max(0, min(sessions.count - 1, chartDragBaseIndex + offset))
                 if newIdx != currentIndex {
                     selectionFeedback.selectionChanged()

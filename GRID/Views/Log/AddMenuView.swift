@@ -69,7 +69,7 @@ struct AddMenuView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 60)
+                .padding(.top, GRIDLayout.headerTopPadding)
                 .padding(.bottom, 20)
 
                 // 種目を追加 / 編集ボタン

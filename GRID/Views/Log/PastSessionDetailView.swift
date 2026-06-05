@@ -57,7 +57,7 @@ struct PastSessionDetailView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
-                .padding(.bottom, 24)
+                .padding(.bottom, GRIDLayout.headerBottomPadding)
 
                 // セッションカード
                 VStack(spacing: 16) {

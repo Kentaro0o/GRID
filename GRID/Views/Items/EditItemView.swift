@@ -57,8 +57,8 @@ struct EditItemView: View {
                     }
                     .padding(.horizontal, 24)
                 }
-                .padding(.top, 60)
-                .padding(.bottom, 24)
+                .padding(.top, GRIDLayout.headerTopPadding)
+                .padding(.bottom, GRIDLayout.headerBottomPadding)
 
                 ScrollView {
                     VStack(spacing: 20) {

@@ -50,7 +50,7 @@ struct DataView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 60)
+                .padding(.top, GRIDLayout.headerTopPadding)
                 .padding(.bottom, 20)
 
                 // ─── コンテンツ ───

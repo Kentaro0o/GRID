@@ -57,8 +57,8 @@ struct ViewItemView: View {
                     }
                     .padding(.horizontal, 24)
                 }
-                .padding(.top, 60)
-                .padding(.bottom, 24)
+                .padding(.top, GRIDLayout.headerTopPadding)
+                .padding(.bottom, GRIDLayout.headerBottomPadding)
 
                 // ─── Muscle group filter ───
                 ScrollView(.horizontal, showsIndicators: false) {

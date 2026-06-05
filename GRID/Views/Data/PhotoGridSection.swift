@@ -105,7 +105,7 @@ struct FullScreenPhotoView: View {
                             .clipShape(Circle())
                     }
                     .padding(.trailing, 20)
-                    .padding(.top, 60)
+                    .padding(.top, GRIDLayout.headerTopPadding)
                 }
                 Spacer()
             }

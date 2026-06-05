@@ -29,6 +29,7 @@
 		A2F328D4D441C0CB2FDFE5F7 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C155F24F7097B09754F121 /* CameraView.swift */; };
 		B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */; };
 		C64120AAABA1534901C6654C /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B1C4ED818F8C451F3892BB /* Session.swift */; };
+		CFAE385F1BBB3797DFF9961D /* Layout+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F45053ED89F08280E139FF1 /* Layout+Theme.swift */; };
 		DBB01BCCFBC73246C1C9D82A /* PhotoViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31FCB777631A88BFF10FED7 /* PhotoViewerView.swift */; };
 		E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD33BF1B497BF634D49AA04 /* DataView.swift */; };
 		E9A0239B6A02851F3EEAD05A /* PhotoGridSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DABC065D2229BDD38BD3F67 /* PhotoGridSection.swift */; };
@@ -43,6 +44,7 @@
 		24929EE7E57DA81A00BED4A0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		29DAB92B22AF980D5B4C853B /* WorkoutEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEntry.swift; sourceTree = "<group>"; };
 		2BC595BAE93DA8F65CC0F0C4 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
+		3F45053ED89F08280E139FF1 /* Layout+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Layout+Theme.swift"; sourceTree = "<group>"; };
 		434F85E6D056F07CCFDB571B /* AddItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddItemView.swift; sourceTree = "<group>"; };
 		4998614C9448B73E946DC678 /* SessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineView.swift; sourceTree = "<group>"; };
 		4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PastSessionDetailView.swift; sourceTree = "<group>"; };
@@ -207,6 +209,7 @@
 			isa = PBXGroup;
 			children = (
 				F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */,
+				3F45053ED89F08280E139FF1 /* Layout+Theme.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -289,6 +292,7 @@
 				26BEA0BCB834FADA2EA7FA57 /* GRIDTabBar.swift in Sources */,
 				FB6990ED804B23F5F6222C34 /* Item.swift in Sources */,
 				72DC2B1EA295A3FEA72A6AB0 /* ItemFormView.swift in Sources */,
+				CFAE385F1BBB3797DFF9961D /* Layout+Theme.swift in Sources */,
 				958872960D57D5C520D587EC /* LogTabView.swift in Sources */,
 				FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */,
 				083DF7F18611C5EF4023D1CE /* NewItemView.swift in Sources */,

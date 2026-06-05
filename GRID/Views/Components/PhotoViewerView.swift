@@ -83,7 +83,7 @@ struct PhotoViewerView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 60)
+                .padding(.top, GRIDLayout.headerTopPadding)
 
                 Spacer()
 

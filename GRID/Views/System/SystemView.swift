@@ -27,7 +27,7 @@ struct SystemView: View {
                         Spacer()
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 60)
+                    .padding(.top, GRIDLayout.headerTopPadding)
                     .padding(.bottom, 32)
 
                     // Body weight section
