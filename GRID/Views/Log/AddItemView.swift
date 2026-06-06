@@ -194,9 +194,9 @@ struct AddItemView: View {
                 if remaining > 0 {
                     remainingSeconds = remaining
                 } else {
-                    // バックグラウンド中に終了していた
-                    remainingSeconds = 0
+                    // バックグラウンド中に終了していた → リセット
                     stopTimer()
+                    remainingSeconds = totalSeconds
                 }
             }
         }
@@ -387,13 +387,14 @@ struct AddItemView: View {
             if remaining > 0 {
                 remainingSeconds = remaining
             } else {
-                remainingSeconds = 0
                 stopTimer()
                 let soundEnabled = UserDefaults.standard.object(forKey: "timerSoundEnabled") as? Bool ?? true
                 if soundEnabled {
                     AudioServicesPlaySystemSound(1057)
                 }
                 AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                // 自動リセット（再生ボタンがすぐ使えるように）
+                remainingSeconds = totalSeconds
             }
         }
     }
