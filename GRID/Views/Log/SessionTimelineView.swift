@@ -343,6 +343,10 @@ struct SessionTimelineView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                addMenuSession = session
+            }
 
             Button {
                 if session.photosData.isEmpty {
@@ -353,6 +357,7 @@ struct SessionTimelineView: View {
                 }
             } label: {
                 photoContent(session: session)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -418,6 +423,7 @@ struct SessionTimelineView: View {
                     Image(uiImage: ui)
                         .resizable()
                         .scaledToFill()
+                        .clipped()
                     if session.photosData.count > 1 {
                         Text("\(session.photosData.count)")
                             .font(.gridCaption)

@@ -1,14 +1,15 @@
 import SwiftUI
 import UIKit
+import LocalAuthentication
 
 struct SystemView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var exportURL: URL? = nil
     @State private var showShareSheet = false
     @State private var showClearConfirm = false
+    @State private var showDeleteInput  = false
+    @State private var deleteInputText  = ""
     @State private var defaultRestTimer = 120
-    @State private var showWeightInput = false
-    @State private var weightInput = ""
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -30,52 +31,6 @@ struct SystemView: View {
                     .padding(.top, GRIDLayout.headerTopPadding)
                     .padding(.bottom, 32)
 
-                    // Body weight section
-                    sectionCard(title: "今日の体重") {
-                        HStack {
-                            if let session = vm.todaySession, let w = session.bodyWeight {
-                                Text("\(w, specifier: "%.1f") kg")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.gridTextPrimary)
-                            } else {
-                                Text("未入力")
-                                    .font(.gridBody)
-                                    .foregroundColor(.gridTextSecondary)
-                            }
-                            Spacer()
-                            Button("入力") {
-                                weightInput = vm.todaySession?.bodyWeight.map { String($0) } ?? ""
-                                showWeightInput = true
-                            }
-                            .font(.gridBody)
-                            .foregroundColor(.gridAccent)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 8)
-                            .background(Color.gridAccent.opacity(0.15))
-                            .clipShape(Capsule())
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 18)
-                    }
-
-                    // Camera setting
-                    sectionCard(title: "カメラ設定") {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("撮影した写真をカメラロールに保存")
-                                    .font(.gridBody)
-                                    .foregroundColor(.gridTextPrimary)
-                                Text("オフにするとアプリ内にのみ保存されます")
-                                    .font(.gridCaption)
-                                    .foregroundColor(.gridTextSecondary)
-                            }
-                            Spacer()
-                            Toggle("", isOn: $saveCameraPhotoToRoll)
-                                .tint(.gridAccent)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                    }
 
                     // Default rest timer
                     sectionCard(title: "デフォルト レストタイマー") {
@@ -102,6 +57,26 @@ struct SystemView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 20)
                     }
+                    
+                    // Camera setting
+                    sectionCard(title: "カメラ設定") {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("撮影した写真をカメラロールに保存")
+                                    .font(.gridBody)
+                                    .foregroundColor(.gridTextPrimary)
+                                Text("オフにするとアプリ内にのみ保存されます")
+                                    .font(.gridCaption)
+                                    .foregroundColor(.gridTextSecondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $saveCameraPhotoToRoll)
+                                .tint(.gridAccent)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                    }
+                    
 
                     // Data section
                     sectionCard(title: "データ管理") {
@@ -128,20 +103,15 @@ struct SystemView: View {
                                 sublabel: "すべてのセッションデータを削除します",
                                 isDestructive: true
                             ) {
-                                showClearConfirm = true
+                                deleteInputText = ""
+                                showDeleteInput = true
                             }
                         }
                     }
 
                     // About section
                     sectionCard(title: "このアプリについて") {
-                        VStack(spacing: 0) {
-                            infoRow(label: "バージョン", value: appVersion)
-                            Divider().background(Color.gridCardInner).padding(.horizontal, 20)
-                            infoRow(label: "データ保存先", value: "デバイス本体")
-                            Divider().background(Color.gridCardInner).padding(.horizontal, 20)
-                            infoRow(label: "アカウント", value: "不要")
-                        }
+                        infoRow(label: "バージョン", value: appVersion)
                     }
 
                     // Privacy note
@@ -168,19 +138,23 @@ struct SystemView: View {
                 }
             }
         }
-        .alert("体重を入力", isPresented: $showWeightInput) {
-            TextField("82.5", text: $weightInput)
-                .keyboardType(.decimalPad)
-            Button("保存") {
-                if let w = Double(weightInput) {
-                    var session = vm.ensureTodaySession()
-                    session.bodyWeight = w
-                    vm.updateSession(session)
+        .alert("「DELETE」と入力してください", isPresented: $showDeleteInput) {
+            TextField("DELETE", text: $deleteInputText)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.characters)
+            Button("削除", role: .destructive) {
+                if deleteInputText == "DELETE" {
+                    showClearConfirm = true
                 }
+                deleteInputText = ""
             }
-            Button("キャンセル", role: .cancel) {}
+            Button("キャンセル", role: .cancel) {
+                deleteInputText = ""
+            }
+        } message: {
+            Text("全データを削除するには「DELETE」と入力してください")
         }
-        .alert("全データを削除しますか？", isPresented: $showClearConfirm) {
+        .alert("本当に削除しますか？", isPresented: $showClearConfirm) {
             Button("削除", role: .destructive) {
                 UserDefaults.standard.removeObject(forKey: "grid_sessions")
                 vm.sessions = []
