@@ -3,11 +3,8 @@ import SwiftUI
 struct PhotoGridSection: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var currentIndex: Int = 0
-    @State private var dragOffset: CGFloat = 0
     @State private var showCalendar   = false
     @State private var showFullScreen = false
-
-    private let feedback = UIImpactFeedbackGenerator(style: .rigid)
 
     /// 日付ごとに先頭1枚のみ、古い順
     private var photos: [AppViewModel.PhotoEntry] {
@@ -32,67 +29,41 @@ struct PhotoGridSection: View {
         } else {
             ZStack(alignment: .topLeading) {
                 GeometryReader { geo in
-                    let cardW  = geo.size.width * 0.68
-                    let cardH  = cardW * 1.22
-                    let stepH  = cardH + 20          // カード間ピッチ
-                    let centerY = geo.size.height / 2
-                    let cardX  = (geo.size.width - cardW) / 2
+                    let cardW = geo.size.width * 0.68
+                    let cardH = cardW * 1.22
+                    let cardX = (geo.size.width - cardW) / 2
 
-                    ZStack {
-                        ForEach(Array(photos.enumerated()), id: \.element.id) { idx, photo in
-                            let baseY  = centerY + CGFloat(idx - currentIndex) * stepH + dragOffset
-                            let dist   = abs(baseY - centerY)
-                            let scale  = max(0.78, 1.0 - dist / (stepH * 3))
-                            let opacity = max(0.35, 1.0 - dist / (stepH * 2))
-
-                            photoCard(photo: photo, cardW: cardW, cardH: cardH)
-                                .scaleEffect(scale)
-                                .opacity(opacity)
-                                .position(x: geo.size.width / 2, y: baseY)
-                                .onTapGesture {
-                                    if idx == currentIndex {
-                                        showFullScreen = true
-                                    } else {
-                                        snapTo(idx)
-                                    }
+                    ScrollViewReader { proxy in
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(spacing: 20) {
+                                ForEach(Array(photos.enumerated()), id: \.element.id) { idx, photo in
+                                    photoCard(photo: photo, cardW: cardW, cardH: cardH)
+                                        .id(photo.id)
+                                        .scrollTransition(.animated(.easeInOut(duration: 0.2))) { content, phase in
+                                            content
+                                                .scaleEffect(phase.isIdentity ? 1.0 : 0.84)
+                                                .opacity(phase.isIdentity ? 1.0 : 0.45)
+                                        }
+                                        .onTapGesture {
+                                            vm.navigateToSessionId = photo.sessionId
+                                        }
                                 }
-                        }
-                    }
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .clipped()
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                // 慣性を抑えて直接的なドラッグ感
-                                let resistance: CGFloat = 0.85
-                                dragOffset = value.translation.height * resistance
+                                Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
                             }
-                            .onEnded { value in
-                                let velocity  = value.predictedEndTranslation.height - value.translation.height
-                                let threshold = stepH * 0.3
-
-                                // 速度 or 移動量で次コマへ
-                                let moved = dragOffset + velocity * 0.25
-                                let steps = Int((-moved / stepH).rounded())
-                                let newIdx = max(0, min(photos.count - 1, currentIndex + steps))
-
-                                snapTo(newIdx)
-                            }
-                    )
-
-                    // ─── 日付ラベル（左側）───
-                    if let photo = photos[safe: currentIndex] {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(yearString(photo.date))
-                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.gridTextSecondary)
-                            Text(monthDayString(photo.date))
-                                .font(.system(size: 15, weight: .bold, design: .monospaced))
-                                .foregroundColor(.gridTextPrimary)
+                            .padding(.horizontal, cardX)
+                            .padding(.vertical, (geo.size.height - cardH) / 2)
                         }
-                        .frame(width: cardX - 8, alignment: .leading)
-                        .position(x: (cardX - 8) / 2, y: centerY)
-                        .animation(.easeInOut(duration: 0.2), value: currentIndex)
+                        .onAppear {
+                            currentIndex = max(0, photos.count - 1)
+                            if let last = photos.last {
+                                proxy.scrollTo(last.id, anchor: .center)
+                            }
+                        }
+                        .onChange(of: showCalendar) { _, isShown in
+                            if !isShown, let photo = photos[safe: currentIndex] {
+                                withAnimation { proxy.scrollTo(photo.id, anchor: .center) }
+                            }
+                        }
                     }
                 }
 
@@ -109,7 +80,6 @@ struct PhotoGridSection: View {
                 .padding(.top, 8)
             }
             .onAppear {
-                feedback.prepare()
                 currentIndex = max(0, photos.count - 1)
             }
             .sheet(isPresented: $showCalendar) {
@@ -121,32 +91,38 @@ struct PhotoGridSection: View {
         }
     }
 
-    private func snapTo(_ idx: Int) {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-            currentIndex = idx
-            dragOffset   = 0
-        }
-        feedback.impactOccurred()
-        feedback.prepare()   // 次回のために再準備
-    }
-
     private func photoCard(photo: AppViewModel.PhotoEntry, cardW: CGFloat, cardH: CGFloat) -> some View {
-        Group {
-            if let img = UIImage(data: photo.imageData) {
-                Image(uiImage: img)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: cardW, height: cardH)
-                    .clipped()
-            } else {
-                Color.gridCard
-                    .frame(width: cardW, height: cardH)
+        ZStack(alignment: .bottomLeading) {
+            Group {
+                if let img = UIImage(data: photo.imageData) {
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: cardW, height: cardH)
+                        .clipped()
+                } else {
+                    Color.gridCard
+                        .frame(width: cardW, height: cardH)
+                }
             }
+
+            // ─── 日付ラベル（左下）───
+            Text(shortDateString(photo.date))
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(12)
         }
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: .black.opacity(0.4), radius: 14, y: 8)
     }
 
+    private func shortDateString(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "MM.dd"; return f.string(from: date)
+    }
     private func yearString(_ date: Date) -> String {
         let f = DateFormatter(); f.dateFormat = "yyyy"; return f.string(from: date)
     }
