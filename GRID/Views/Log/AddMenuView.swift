@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct AddMenuView: View {
     @EnvironmentObject var vm: AppViewModel
@@ -8,6 +9,16 @@ struct AddMenuView: View {
     @State private var showItemPicker = false
     @State private var navPath = NavigationPath()
     @State private var isEditing = false
+    @State private var showOther = false
+    @State private var weightInputText = ""
+    @State private var showWeightInput = false
+    @State private var showPhotoSourceDialog = false
+    @State private var showCamera = false
+    @State private var showPhotoPicker = false
+    @State private var showPhotoViewer = false
+    @State private var photoPicker: [PhotosPickerItem] = []
+    @State private var cameraImageData: Data? = nil
+    @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
     @FocusState private var memoFocused: Bool
 
     init(session: Session) {
@@ -168,6 +179,130 @@ struct AddMenuView: View {
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
+                    // その他（体重・写真）
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            // トグルヘッダー
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showOther.toggle()
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: showOther ? "chevron.down" : "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.gridTextSecondary)
+                                    Text("その他")
+                                        .font(.gridBody)
+                                        .foregroundColor(.gridTextSecondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+
+                            if showOther {
+                                GeometryReader { geo in
+                                    let hasPhoto = !session.photosData.isEmpty
+                                    let squareSize = (geo.size.width - 12) / 2
+
+                                    HStack(spacing: 12) {
+                                        // ─── 体重 ───
+                                        Button {
+                                            weightInputText = session.bodyWeight.map { String($0) } ?? ""
+                                            showWeightInput = true
+                                        } label: {
+                                            if hasPhoto {
+                                                // 正方形
+                                                VStack(spacing: 6) {
+                                                    Image(systemName: "scalemass")
+                                                        .font(.system(size: 22))
+                                                    if let w = session.bodyWeight {
+                                                        Text(String(format: "%.1f kg", w))
+                                                            .font(.system(size: 15, weight: .semibold))
+                                                    } else {
+                                                        Text("体重")
+                                                            .font(.gridBody)
+                                                    }
+                                                }
+                                                .foregroundColor(session.bodyWeight != nil ? .gridAccent : .gridTextSecondary)
+                                                .frame(width: squareSize, height: squareSize)
+                                                .background(session.bodyWeight != nil ? Color.gridAccent.opacity(0.12) : Color.gridCardInner)
+                                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                            } else {
+                                                // 横長
+                                                HStack(spacing: 8) {
+                                                    Image(systemName: "scalemass").font(.system(size: 15))
+                                                    if let w = session.bodyWeight {
+                                                        Text(String(format: "%.1f kg", w)).font(.gridBody)
+                                                    } else {
+                                                        Text("体重").font(.gridBody)
+                                                    }
+                                                }
+                                                .foregroundColor(session.bodyWeight != nil ? .gridAccent : .gridTextSecondary)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 12)
+                                                .background(session.bodyWeight != nil ? Color.gridAccent.opacity(0.12) : Color.gridCardInner)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            }
+                                        }
+                                        .buttonStyle(.plain)
+
+                                        // ─── 写真 ───
+                                        if hasPhoto, let first = session.photosData.first, let img = UIImage(data: first) {
+                                            // サムネイル正方形
+                                            Button { showPhotoViewer = true } label: {
+                                                ZStack(alignment: .topTrailing) {
+                                                    Image(uiImage: img)
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .frame(width: squareSize, height: squareSize)
+                                                        .clipped()
+                                                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                                                    if session.photosData.count > 1 {
+                                                        Text("\(session.photosData.count)")
+                                                            .font(.gridCaption)
+                                                            .foregroundColor(.white)
+                                                            .padding(.horizontal, 6)
+                                                            .padding(.vertical, 3)
+                                                            .background(Color.black.opacity(0.5))
+                                                            .clipShape(Capsule())
+                                                            .padding(6)
+                                                    }
+                                                }
+                                            }
+                                            .buttonStyle(.plain)
+                                            .simultaneousGesture(
+                                                LongPressGesture().onEnded { _ in
+                                                    showPhotoSourceDialog = true
+                                                }
+                                            )
+                                        } else {
+                                            // 写真なし：横長ボタン
+                                            Button { showPhotoSourceDialog = true } label: {
+                                                HStack(spacing: 8) {
+                                                    Image(systemName: "camera").font(.system(size: 15))
+                                                    Text("写真").font(.gridBody)
+                                                }
+                                                .foregroundColor(.gridTextSecondary)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 12)
+                                                .background(Color.gridCardInner)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                                .frame(height: session.photosData.isEmpty ? 44 : (UIScreen.main.bounds.width - 48 - 12) / 2)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 12)
                         .padding(.bottom, 100)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
@@ -183,10 +318,12 @@ struct AddMenuView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("完了") {
-                    memoFocused = false
+                if memoFocused {
+                    Button("完了") {
+                        memoFocused = false
+                    }
+                    .foregroundColor(.gridAccent)
                 }
-                .foregroundColor(.gridAccent)
             }
         }
         .sheet(isPresented: $showItemPicker) {
@@ -196,6 +333,47 @@ struct AddMenuView: View {
         .navigationDestination(for: WorkoutEntry.self) { entry in
             AddItemView(session: $session, entryId: entry.id)
                 .environmentObject(vm)
+        }
+        .alert("体重を入力", isPresented: $showWeightInput) {
+            TextField("82.5", text: $weightInputText)
+                .keyboardType(.decimalPad)
+            Button("保存") {
+                if let w = Double(weightInputText) {
+                    session.bodyWeight = w
+                    vm.updateSession(session)
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .confirmationDialog("写真を追加", isPresented: $showPhotoSourceDialog) {
+            Button("カメラで撮影") { showCamera = true }
+            Button("ライブラリから選択") { showPhotoPicker = true }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoPicker, matching: .images)
+        .onChange(of: photoPicker) { _, items in
+            Task {
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        session.photosData.append(data)
+                    }
+                }
+                photoPicker = []
+                vm.updateSession(session)
+            }
+        }
+        .fullScreenCover(isPresented: $showPhotoViewer) {
+            PhotoViewerView(photosData: $session.photosData)
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraView(imageData: $cameraImageData, saveToRoll: saveCameraPhotoToRoll)
+        }
+        .onChange(of: cameraImageData) { _, data in
+            if let data {
+                session.photosData.append(data)
+                vm.updateSession(session)
+                cameraImageData = nil
+            }
         }
         } // NavigationStack
     }

@@ -11,6 +11,7 @@ struct SystemView: View {
     @State private var deleteInputText  = ""
     @State private var defaultRestTimer = 120
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
+    @AppStorage("timerSoundEnabled") private var timerSoundEnabled = true
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
@@ -36,7 +37,7 @@ struct SystemView: View {
                     sectionCard(title: "デフォルト レストタイマー") {
                         HStack(spacing: 24) {
                             Button {
-                                if defaultRestTimer > 30 { defaultRestTimer -= 30 }
+                                if defaultRestTimer > 10 { defaultRestTimer -= 10 }
                             } label: {
                                 Image(systemName: "minus.circle")
                                     .font(.system(size: 28))
@@ -47,7 +48,7 @@ struct SystemView: View {
                                 .foregroundColor(.gridTextPrimary)
                                 .frame(maxWidth: .infinity)
                             Button {
-                                defaultRestTimer += 30
+                                defaultRestTimer += 10
                             } label: {
                                 Image(systemName: "plus.circle")
                                     .font(.system(size: 28))
@@ -58,9 +59,31 @@ struct SystemView: View {
                         .padding(.vertical, 20)
                     }
                     
+                    // タイマー音
+                    sectionCard(title: "タイマー音") {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("タイマー終了時に音を鳴らす")
+                                    .font(.gridBody)
+                                    .foregroundColor(.gridTextPrimary)
+                                Text("オフにすると無音で終了します")
+                                    .font(.gridCaption)
+                                    .foregroundColor(.gridTextSecondary)
+                                    .padding(.top, 1)
+                            
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Toggle("", isOn: $timerSoundEnabled)
+                                .tint(.gridAccent)
+                                .fixedSize()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                    }
+
                     // Camera setting
                     sectionCard(title: "カメラ設定") {
-                        HStack {
+                        HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("撮影した写真をカメラロールに保存")
                                     .font(.gridBody)
@@ -68,10 +91,12 @@ struct SystemView: View {
                                 Text("オフにするとアプリ内にのみ保存されます")
                                     .font(.gridCaption)
                                     .foregroundColor(.gridTextSecondary)
+                                    .padding(.top, 1)
                             }
-                            Spacer()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $saveCameraPhotoToRoll)
                                 .tint(.gridAccent)
+                                .fixedSize()
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)

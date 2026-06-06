@@ -1,4 +1,5 @@
 import SwiftUI
+import AudioToolbox
 
 struct AddItemView: View {
     @EnvironmentObject var vm: AppViewModel
@@ -270,8 +271,8 @@ struct AddItemView: View {
                 if isEditingTimer {
                     // 編集モード：−
                     Button {
-                        if totalSeconds > 30 {
-                            totalSeconds -= 30
+                        if totalSeconds > 10 {
+                            totalSeconds -= 10
                             remainingSeconds = totalSeconds
                             saveTimerToItem()
                         }
@@ -302,7 +303,7 @@ struct AddItemView: View {
                 if isEditingTimer {
                     // 編集モード：＋
                     Button {
-                        totalSeconds += 30
+                        totalSeconds += 10
                         remainingSeconds = totalSeconds
                         saveTimerToItem()
                     } label: {
@@ -364,6 +365,11 @@ struct AddItemView: View {
                 remainingSeconds -= 1
             } else {
                 stopTimer()
+                let soundEnabled = UserDefaults.standard.object(forKey: "timerSoundEnabled") as? Bool ?? true
+                if soundEnabled {
+                    AudioServicesPlaySystemSound(1057)
+                }
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
             }
         }
     }
