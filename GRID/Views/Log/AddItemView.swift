@@ -1,5 +1,6 @@
 import SwiftUI
 import AudioToolbox
+import UserNotifications
 
 struct AddItemView: View {
     @EnvironmentObject var vm: AppViewModel
@@ -13,6 +14,8 @@ struct AddItemView: View {
     @State private var timer: Timer? = nil
     @State private var totalSeconds: Int = 120
     @State private var isEditingTimer = false
+    @State private var timerEndDate: Date? = nil   // バックグラウンド対応用
+    @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focusedField: Field?
 
     enum Field { case weight, reps, memo }
@@ -183,6 +186,19 @@ struct AddItemView: View {
         }
         .onDisappear {
             timer?.invalidate()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, timerRunning, let endDate = timerEndDate {
+                // フォアグラウンド復帰時に残り時間を再計算
+                let remaining = Int(endDate.timeIntervalSinceNow.rounded(.up))
+                if remaining > 0 {
+                    remainingSeconds = remaining
+                } else {
+                    // バックグラウンド中に終了していた
+                    remainingSeconds = 0
+                    stopTimer()
+                }
+            }
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -360,10 +376,18 @@ struct AddItemView: View {
 
     private func startTimer() {
         timerRunning = true
+        timerEndDate = Date().addingTimeInterval(Double(remainingSeconds))
+
+        // ローカル通知をスケジュール
+        scheduleTimerNotification(after: remainingSeconds)
+
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if remainingSeconds > 0 {
-                remainingSeconds -= 1
+            // 終了予定時刻から残り秒数を計算（バックグラウンド復帰後も正確）
+            let remaining = Int((timerEndDate?.timeIntervalSinceNow ?? 0).rounded(.up))
+            if remaining > 0 {
+                remainingSeconds = remaining
             } else {
+                remainingSeconds = 0
                 stopTimer()
                 let soundEnabled = UserDefaults.standard.object(forKey: "timerSoundEnabled") as? Bool ?? true
                 if soundEnabled {
@@ -376,8 +400,23 @@ struct AddItemView: View {
 
     private func stopTimer() {
         timerRunning = false
+        timerEndDate = nil
         timer?.invalidate()
         timer = nil
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["grid_timer"])
+    }
+
+    private func scheduleTimerNotification(after seconds: Int) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "GRID"
+            content.body = "レストタイマーが終了しました"
+            content.sound = .default
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: Double(seconds), repeats: false)
+            let request = UNNotificationRequest(identifier: "grid_timer", content: content, trigger: trigger)
+            UNUserNotificationCenter.current().add(request)
+        }
     }
 
     private func timeString(_ seconds: Int) -> String {
