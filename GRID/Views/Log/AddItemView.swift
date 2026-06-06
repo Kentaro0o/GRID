@@ -391,6 +391,9 @@ struct AddItemView: View {
                 let soundEnabled = UserDefaults.standard.object(forKey: "timerSoundEnabled") as? Bool ?? true
                 if soundEnabled {
                     AudioServicesPlaySystemSound(1057)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                        AudioServicesPlaySystemSound(1057)
+                    }
                 }
                 AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
                 // 自動リセット（再生ボタンがすぐ使えるように）
