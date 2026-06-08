@@ -14,11 +14,13 @@ struct AddItemView: View {
     @State private var timer: Timer? = nil
     @State private var totalSeconds: Int = 120
     @State private var isEditingTimer = false
+    @State private var timerTyped   = ""              // ユーザーが打った数字（最大4桁）
+    @State private var timerHasTyped = false          // 一度でも入力したか
     @State private var timerEndDate: Date? = nil   // バックグラウンド対応用
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focusedField: Field?
 
-    enum Field { case weight, reps, memo }
+    enum Field { case weight, reps, memo, timer }
 
     private var entryIndex: Int? {
         session.entries.firstIndex { $0.id == entryId }
@@ -148,8 +150,9 @@ struct AddItemView: View {
 
                 Spacer().frame(height: 160)
             }
-
-            // 編集ボタン＋タイマー（キーボードで動かない）
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // タイマーパネル：キーボードが出ると自動で押し上げられる
             VStack(spacing: 0) {
                 HStack {
                     Spacer()
@@ -157,7 +160,10 @@ struct AddItemView: View {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             isEditingTimer.toggle()
                             if !isEditingTimer {
+                                focusedField  = nil
                                 remainingSeconds = totalSeconds
+                                timerTyped    = ""
+                                timerHasTyped = false
                             }
                         }
                     } label: {
@@ -165,19 +171,18 @@ struct AddItemView: View {
                             .font(.system(size: 20))
                             .foregroundColor(isEditingTimer ? .gridAccent : .gridTextSecondary)
                             .frame(width: 36, height: 36)
-                            //.background(Color.gridCard)
                             .clipShape(Circle())
                     }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 10)
-                .padding(.bottom, 10)
+                .padding(.bottom, 4)
 
                 timerPanel
             }
-            //.ignoresSafeArea(.keyboard)
+            .background(Color.gridBgPurple)
         }
-        .ignoresSafeArea(.keyboard)
+        .scrollDismissesKeyboard(.interactively)
         .onAppear {
             if let item = entry.flatMap({ vm.item(for: $0.itemId) }) {
                 totalSeconds = item.restTimerSeconds
@@ -203,10 +208,12 @@ struct AddItemView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("完了") {
-                    focusedField = nil
+                if focusedField != .timer {
+                    Button("完了") {
+                        focusedField = nil
+                    }
+                    .foregroundColor(.gridAccent)
                 }
-                .foregroundColor(.gridAccent)
             }
         }
         .navigationBarHidden(true)
@@ -225,16 +232,27 @@ struct AddItemView: View {
 
             // Weight
             HStack(spacing: 4) {
-                TextField("0", value: $session.entries[entryIdx].sets[setIdx].weight, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 56)
-                    .padding(.vertical, 8)
-                    //.background(Color.gridCard)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .font(.gridBody)
-                    .foregroundColor(.gridTextPrimary)
-                    .focused($focusedField, equals: .weight)
+                TextField(
+                    "",
+                    text: Binding(
+                        get: {
+                            let w = session.entries[entryIdx].sets[setIdx].weight
+                            return w == 0 ? "" : (w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w))
+                        },
+                        set: { session.entries[entryIdx].sets[setIdx].weight = Double($0) ?? 0 }
+                    )
+                )
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.center)
+                .frame(width: 56)
+                .padding(.vertical, 8)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .font(.gridBody)
+                .foregroundColor(.gridTextPrimary)
+                .focused($focusedField, equals: .weight)
+                .placeholder(when: session.entries[entryIdx].sets[setIdx].weight == 0) {
+                    Text("－").foregroundColor(.gridTextTertiary).font(.gridBody)
+                }
                 Text("Kg")
                     .font(.gridCaption)
                     .foregroundColor(.gridTextSecondary)
@@ -242,16 +260,27 @@ struct AddItemView: View {
 
             // Reps
             HStack(spacing: 4) {
-                TextField("0", value: $session.entries[entryIdx].sets[setIdx].reps, format: .number)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 44)
-                    .padding(.vertical, 8)
-                    //.background(Color.gridCard)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .font(.gridBody)
-                    .foregroundColor(.gridTextPrimary)
-                    .focused($focusedField, equals: .reps)
+                TextField(
+                    "",
+                    text: Binding(
+                        get: {
+                            let r = session.entries[entryIdx].sets[setIdx].reps
+                            return r == 0 ? "" : String(r)
+                        },
+                        set: { session.entries[entryIdx].sets[setIdx].reps = Int($0) ?? 0 }
+                    )
+                )
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.center)
+                .frame(width: 44)
+                .padding(.vertical, 8)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .font(.gridBody)
+                .foregroundColor(.gridTextPrimary)
+                .focused($focusedField, equals: .reps)
+                .placeholder(when: session.entries[entryIdx].sets[setIdx].reps == 0) {
+                    Text("－").foregroundColor(.gridTextTertiary).font(.gridBody)
+                }
                 Text("回")
                     .font(.gridCaption)
                     .foregroundColor(.gridTextSecondary)
@@ -290,6 +319,7 @@ struct AddItemView: View {
                         if totalSeconds > 10 {
                             totalSeconds -= 10
                             remainingSeconds = totalSeconds
+                            syncTimerFields()
                             saveTimerToItem()
                         }
                     } label: {
@@ -311,16 +341,51 @@ struct AddItemView: View {
                     }
                 }
 
-                Text(timeString(isEditingTimer ? totalSeconds : remainingSeconds))
-                    .font(.system(size: 48, weight: .bold, design: .monospaced))
-                    .foregroundColor(isEditingTimer ? .gridAccent : (timerRunning ? .white : .gridTextPrimary))
-                    .frame(maxWidth: .infinity)
+                if isEditingTimer {
+                    ZStack {
+                        // 見えないTextField（キーボード入力キャプチャ用）
+                        TextField("", text: $timerTyped)
+                            .keyboardType(.numberPad)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.01)
+                            .focused($focusedField, equals: .timer)
+                            .onChange(of: timerTyped) { oldVal, newVal in
+                                let digits = newVal.filter { $0.isNumber }
+                                if digits.count > oldVal.filter({ $0.isNumber }).count {
+                                    // 追加
+                                    timerHasTyped = true
+                                    timerTyped = String(digits.suffix(4))
+                                } else {
+                                    // 削除
+                                    timerTyped = String(digits)
+                                }
+                                if timerHasTyped { applyTimerInput() }
+                            }
+
+                        // 色分けテキスト表示
+                        timerColoredDisplay
+                            .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
+                            .onTapGesture { focusedField = .timer }
+                    }
+                    .onAppear {
+                        timerTyped    = ""
+                        timerHasTyped = false
+                        focusedField  = .timer
+                    }
+                } else {
+                    Text(timeString(remainingSeconds))
+                        .font(.system(size: 48, weight: .bold, design: .monospaced))
+                        .foregroundColor(timerRunning ? .white : .gridTextPrimary)
+                        .frame(maxWidth: .infinity)
+                }
 
                 if isEditingTimer {
                     // 編集モード：＋
                     Button {
                         totalSeconds += 10
                         remainingSeconds = totalSeconds
+                        syncTimerFields()
                         saveTimerToItem()
                     } label: {
                         Image(systemName: "plus.circle")
@@ -363,6 +428,57 @@ struct AddItemView: View {
         .padding(.bottom, 10)
         .animation(.easeInOut(duration: 0.3), value: timerRunning)
         .animation(.easeInOut(duration: 0.2), value: isEditingTimer)
+    }
+
+    /// 色分けタイマー表示
+    private var timerColoredDisplay: some View {
+        let font = Font.system(size: 48, weight: .bold, design: .monospaced)
+        let gray = Color.gridTextTertiary
+        let accent = Color.gridAccent
+
+        if !timerHasTyped {
+            // 未入力：既存値をすべてグレーで表示
+            let m = totalSeconds / 60
+            let s = totalSeconds % 60
+            return Text(String(format: "%d:%02d", m, s))
+                .font(font).foregroundColor(gray)
+        } else {
+            // 入力中：先頭の自動ゼロ=グレー、打ち込んだ桁=アクセント
+            let typed = timerTyped.filter { $0.isNumber }
+            let autoCount = max(0, 4 - typed.count)
+            let padded = String(repeating: "0", count: autoCount) + typed
+            let d = Array(padded)
+            let m1 = String(d[0]); let m2 = String(d[1])
+            let s1 = String(d[2]); let s2 = String(d[3])
+
+            func col(_ idx: Int) -> Color { idx < autoCount ? gray : accent }
+
+            return (
+                Text(m1).foregroundColor(col(0)) +
+                Text(m2).foregroundColor(col(1)) +
+                Text(":").foregroundColor(gray) +
+                Text(s1).foregroundColor(col(2)) +
+                Text(s2).foregroundColor(col(3))
+            ).font(font)
+        }
+    }
+
+    private func applyTimerInput() {
+        let digits = timerTyped.filter { $0.isNumber }
+        let padded = String(repeating: "0", count: max(0, 4 - digits.count)) + digits
+        let m = Int(padded.prefix(2))!
+        let s = Int(padded.suffix(2))!
+        let total = m * 60 + s
+        if total > 0 {
+            totalSeconds = total
+            remainingSeconds = total
+            saveTimerToItem()
+        }
+    }
+
+    private func syncTimerFields() {
+        timerTyped    = ""
+        timerHasTyped = false
     }
 
     private func saveTimerToItem() {

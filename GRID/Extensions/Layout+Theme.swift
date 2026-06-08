@@ -1,5 +1,15 @@
 import SwiftUI
 
+extension View {
+    @ViewBuilder
+    func placeholder<Content: View>(when condition: Bool, @ViewBuilder content: () -> Content) -> some View {
+        ZStack(alignment: .center) {
+            if condition { content() }
+            self
+        }
+    }
+}
+
 enum GRIDLayout {
     /// 各タブのヘッダー上部パディング
     static let headerTopPadding: CGFloat    = 32
