@@ -89,10 +89,12 @@ struct LogHomeView: View {
                     TextField("82.5", text: $weightInputText)
                         .keyboardType(.decimalPad)
                     Button("保存") {
-                        if let w = Double(weightInputText) {
+                        if let w = Double(weightInputText), !weightInputText.isEmpty {
                             session.bodyWeight = w
-                            vm.updateSession(session)
+                        } else {
+                            session.bodyWeight = nil
                         }
+                        vm.updateSession(session)
                     }
                     Button("キャンセル", role: .cancel) {}
                 }

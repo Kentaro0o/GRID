@@ -14,7 +14,25 @@ struct WeightLineChart: View {
 
     private let spacing: CGFloat = 64
 
-    @State private var animatedCenter: Double = 0
+    @State private var animatedCenter: Double
+
+    init(data: [(Date, Double)],
+         knownWeightDates: Set<Date> = [],
+         centerIndex: Int = 0,
+         accentColor: Color = .gridAccent,
+         backgroundColor: Color = .gridBg,
+         overflowTop: CGFloat = 0,
+         overflowBottom: CGFloat = 0) {
+        self.data = data
+        self.knownWeightDates = knownWeightDates
+        self.centerIndex = centerIndex
+        self.accentColor = accentColor
+        self.backgroundColor = backgroundColor
+        self.overflowTop = overflowTop
+        self.overflowBottom = overflowBottom
+        // centerIndex を初期値に使うことで初回描画から正しい位置を表示
+        _animatedCenter = State(initialValue: Double(centerIndex))
+    }
 
     // 現在地点の体重を中心に ±0.5kg の固定レンジ
     private var centerWeight: Double {
@@ -29,22 +47,40 @@ struct WeightLineChart: View {
             let positions = points(size: size, center: animatedCenter)
             guard positions.count >= 1 else { return }
 
-            // 線（bodyWeightが実際にある点同士だけ繋ぐ）
-            var linePath = Path()
-            var inLine = false
-            for (i, pos) in positions.enumerated() {
-                if hasKnownWeight(index: i) {
-                    if !inLine {
-                        linePath.move(to: pos)
-                        inLine = true
-                    } else {
-                        linePath.addLine(to: pos)
-                    }
+            // 実データのインデックス一覧
+            let knownIndices = positions.indices.filter { hasKnownWeight(index: $0) }
+
+            // 実線：隣接する実データ同士を繋ぐ
+            var solidPath = Path()
+            for k in 0..<knownIndices.count {
+                let i = knownIndices[k]
+                if k == 0 {
+                    solidPath.move(to: positions[i])
                 } else {
-                    inLine = false
+                    let prev = knownIndices[k - 1]
+                    // 間に補間値がない（直前の実データ）場合のみ実線
+                    if i == prev + 1 {
+                        solidPath.addLine(to: positions[i])
+                    } else {
+                        solidPath.move(to: positions[i])
+                    }
                 }
             }
-            ctx.stroke(linePath, with: .color(accentColor.opacity(0.55)), lineWidth: 2)
+            ctx.stroke(solidPath, with: .color(accentColor.opacity(0.55)), lineWidth: 2)
+
+            // 点線：補間値を挟んだ実データ同士を繋ぐ
+            var dashedPath = Path()
+            for k in 1..<knownIndices.count {
+                let i    = knownIndices[k]
+                let prev = knownIndices[k - 1]
+                if i > prev + 1 {
+                    dashedPath.move(to: positions[prev])
+                    dashedPath.addLine(to: positions[i])
+                }
+            }
+            ctx.stroke(dashedPath,
+                       with: .color(accentColor.opacity(0.35)),
+                       style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
 
             // ドット
             for (i, pos) in positions.enumerated() {

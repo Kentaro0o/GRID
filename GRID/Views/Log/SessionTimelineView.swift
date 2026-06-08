@@ -196,8 +196,12 @@ struct SessionTimelineView: View {
             TextField("例: 72.5", text: $weightInputText)
                 .keyboardType(.decimalPad)
             Button("保存") {
-                if let w = Double(weightInputText), var session = currentSession {
-                    session.bodyWeight = (w * 10).rounded() / 10
+                if var session = currentSession {
+                    if let w = Double(weightInputText), !weightInputText.isEmpty {
+                        session.bodyWeight = (w * 10).rounded() / 10
+                    } else {
+                        session.bodyWeight = nil
+                    }
                     vm.updateSession(session)
                 }
             }
