@@ -17,6 +17,7 @@ struct AddItemView: View {
     @State private var timerTyped   = ""              // ユーザーが打った数字（最大4桁）
     @State private var timerHasTyped = false          // 一度でも入力したか
     @State private var timerEndDate: Date? = nil   // バックグラウンド対応用
+    @State private var showEditItem = false
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focusedField: Field?
 
@@ -57,7 +58,19 @@ struct AddItemView: View {
                         .font(.gridHeadline)
                         .foregroundColor(.gridTextPrimary)
                     Spacer()
-                    Color.clear.frame(width: 36, height: 36)
+                    Menu {
+                        Button {
+                            showEditItem = true
+                        } label: {
+                            Label("編集", systemImage: "pencil")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.gridTextSecondary)
+                            .frame(width: 36, height: 36)
+                            .clipShape(Circle())
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
@@ -217,6 +230,12 @@ struct AddItemView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showEditItem) {
+            if let item = entry.flatMap({ vm.item(for: $0.itemId) }) {
+                EditItemView(item: item)
+                    .environmentObject(vm)
+            }
+        }
     }
 
     // MARK: - Set row

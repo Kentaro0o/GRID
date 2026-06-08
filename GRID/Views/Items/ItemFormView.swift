@@ -7,6 +7,10 @@ struct ItemFormView: View {
     @Binding var restTimerSeconds: Int
     @Binding var muscleGroup: MuscleGroup
 
+    @State private var timerTyped    = ""
+    @State private var timerHasTyped = false
+    @FocusState private var timerFocused: Bool
+
     var body: some View {
         VStack(spacing: 0) {
             // Card
@@ -48,19 +52,26 @@ struct ItemFormView: View {
 
                 Divider().background(Color.gridCardInner)
 
-                // Rest timer toggle
+                // Rest timer header
                 HStack {
                     Text("レストタイマー")
                         .font(.gridBody)
                         .foregroundColor(.gridTextPrimary)
                     Spacer()
                     Button {
-                        restTimerSeconds = restTimerSeconds > 0 ? 0 : 120
+                        if timerFocused {
+                            // 編集中はチェックで確定
+                            timerFocused  = false
+                            timerTyped    = ""
+                            timerHasTyped = false
+                        } else {
+                            restTimerSeconds = restTimerSeconds > 0 ? 0 : 120
+                        }
                     } label: {
-                        Image(systemName: restTimerSeconds > 0 ? "minus" : "plus")
-                            .foregroundColor(.gridTextSecondary)
+                        Image(systemName: timerFocused ? "checkmark" : (restTimerSeconds > 0 ? "minus" : "plus"))
+                            .foregroundColor(timerFocused ? .white : .gridTextSecondary)
                             .frame(width: 28, height: 28)
-                            .background(Color.gridCardInner)
+                            .background(timerFocused ? Color.gridAccent : Color.gridCardInner)
                             .clipShape(Circle())
                     }
                 }
@@ -71,19 +82,48 @@ struct ItemFormView: View {
                 if restTimerSeconds > 0 {
                     HStack(spacing: 32) {
                         Button {
-                            if restTimerSeconds > 30 { restTimerSeconds -= 30 }
+                            if restTimerSeconds > 10 {
+                                restTimerSeconds -= 10
+                                syncTimerFields()
+                            }
                         } label: {
                             Image(systemName: "minus.circle")
                                 .font(.system(size: 28))
                                 .foregroundColor(.gridAccent)
                         }
 
-                        Text(timerString(restTimerSeconds))
-                            .font(.system(size: 44, weight: .bold, design: .monospaced))
-                            .foregroundColor(.gridTextPrimary)
+                        ZStack {
+                            // 見えないTextField（キーボード入力キャプチャ用）
+                            TextField("", text: $timerTyped)
+                                .keyboardType(.numberPad)
+                                .frame(width: 1, height: 1)
+                                .opacity(0.01)
+                                .focused($timerFocused)
+                                .onChange(of: timerTyped) { oldVal, newVal in
+                                    let digits = newVal.filter { $0.isNumber }
+                                    let oldDigits = oldVal.filter { $0.isNumber }
+                                    if digits.count > oldDigits.count {
+                                        timerHasTyped = true
+                                        timerTyped = String(digits.suffix(4))
+                                    } else {
+                                        timerTyped = String(digits)
+                                    }
+                                    if timerHasTyped { applyTimerInput() }
+                                }
+
+                            // 色分けテキスト表示
+                            timerColoredDisplay
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    timerTyped    = ""
+                                    timerHasTyped = false
+                                    timerFocused  = true
+                                }
+                        }
 
                         Button {
-                            restTimerSeconds += 30
+                            restTimerSeconds += 10
+                            syncTimerFields()
                         } label: {
                             Image(systemName: "plus.circle")
                                 .font(.system(size: 28))
@@ -123,6 +163,52 @@ struct ItemFormView: View {
             }
             .padding(.top, 20)
         }
+    }
+
+    // MARK: - 色分けタイマー表示
+
+    private var timerColoredDisplay: some View {
+        let font  = Font.system(size: 44, weight: .bold, design: .monospaced)
+        let gray  = Color.gridTextTertiary
+        let accent = Color.gridAccent
+
+        if !timerHasTyped {
+            let m = restTimerSeconds / 60
+            let s = restTimerSeconds % 60
+            return Text(String(format: "%d:%02d", m, s))
+                .font(font).foregroundColor(timerFocused ? gray : .gridTextPrimary)
+        } else {
+            let typed     = timerTyped.filter { $0.isNumber }
+            let autoCount = max(0, 4 - typed.count)
+            let padded    = String(repeating: "0", count: autoCount) + typed
+            let d         = Array(padded)
+
+            func col(_ idx: Int) -> Color { idx < autoCount ? gray : accent }
+
+            return (
+                Text(String(d[0])).foregroundColor(col(0)) +
+                Text(String(d[1])).foregroundColor(col(1)) +
+                Text(":").foregroundColor(gray) +
+                Text(String(d[2])).foregroundColor(col(2)) +
+                Text(String(d[3])).foregroundColor(col(3))
+            ).font(font)
+        }
+    }
+
+    // MARK: - ヘルパー
+
+    private func applyTimerInput() {
+        let digits = timerTyped.filter { $0.isNumber }
+        let padded = String(repeating: "0", count: max(0, 4 - digits.count)) + digits
+        let m = Int(padded.prefix(2))!
+        let s = Int(padded.suffix(2))!
+        let total = m * 60 + s
+        if total > 0 { restTimerSeconds = total }
+    }
+
+    private func syncTimerFields() {
+        timerTyped    = ""
+        timerHasTyped = false
     }
 
     private func timerString(_ seconds: Int) -> String {
