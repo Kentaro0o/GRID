@@ -25,6 +25,7 @@
 		7F3A36A4B66612F4E1E79845 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24929EE7E57DA81A00BED4A0 /* Assets.xcassets */; };
 		859265698882E411297BB412 /* AddItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434F85E6D056F07CCFDB571B /* AddItemView.swift */; };
 		958872960D57D5C520D587EC /* LogTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECCD2570E5A78031CDA5457 /* LogTabView.swift */; };
+		1507BAFE6CA146A28560D753 /* LogHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8824F72A23420C8CD79423 /* LogHomeView.swift */; };
 		9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECC8A5850629A6793508FB6 /* SystemView.swift */; };
 		A2F328D4D441C0CB2FDFE5F7 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C155F24F7097B09754F121 /* CameraView.swift */; };
 		B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */; };
@@ -68,6 +69,7 @@
 		E917C1DE66E82E122411B42D /* GRID.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GRID.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEB553F479F21987390EF421 /* CSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVExporter.swift; sourceTree = "<group>"; };
 		EECCD2570E5A78031CDA5457 /* LogTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogTabView.swift; sourceTree = "<group>"; };
+		7D8824F72A23420C8CD79423 /* LogHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogHomeView.swift; sourceTree = "<group>"; };
 		F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
 		FDA54202C3780D3F9FEDEBE7 /* WeightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -125,6 +127,7 @@
 				434F85E6D056F07CCFDB571B /* AddItemView.swift */,
 				5D4CF87F750C5513D79CABD3 /* AddMenuView.swift */,
 				EECCD2570E5A78031CDA5457 /* LogTabView.swift */,
+				7D8824F72A23420C8CD79423 /* LogHomeView.swift */,
 				4A01A912FF73770C9D849CBD /* PastSessionDetailView.swift */,
 				4998614C9448B73E946DC678 /* SessionTimelineView.swift */,
 				FDA54202C3780D3F9FEDEBE7 /* WeightListView.swift */,
@@ -294,6 +297,7 @@
 				72DC2B1EA295A3FEA72A6AB0 /* ItemFormView.swift in Sources */,
 				CFAE385F1BBB3797DFF9961D /* Layout+Theme.swift in Sources */,
 				958872960D57D5C520D587EC /* LogTabView.swift in Sources */,
+				1507BAFE6CA146A28560D753 /* LogHomeView.swift in Sources */,
 				FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */,
 				083DF7F18611C5EF4023D1CE /* NewItemView.swift in Sources */,
 				5A72C12298837C5EACF48B1B /* PastSessionDetailView.swift in Sources */,

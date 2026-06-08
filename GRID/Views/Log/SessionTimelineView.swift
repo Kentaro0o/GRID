@@ -4,6 +4,10 @@ import PhotosUI
 struct SessionTimelineView: View {
     @EnvironmentObject var vm: AppViewModel
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
+
+    var showBackButton: Bool = false
+    var initialSessionId: UUID? = nil
 
     private var sessions: [Session] {
         vm.sessions.sorted { $0.date < $1.date }
@@ -107,6 +111,9 @@ struct SessionTimelineView: View {
                let idx = sessions.firstIndex(where: { $0.id == targetId }) {
                 currentIndex = idx
                 vm.navigateToSessionId = nil
+            } else if let targetId = initialSessionId,
+                      let idx = sessions.firstIndex(where: { $0.id == targetId }) {
+                currentIndex = idx
             } else {
                 currentIndex = todayIndex
             }
@@ -268,13 +275,28 @@ struct SessionTimelineView: View {
                 .animation(.none, value: currentIndex)
 
             HStack {
-                // 左：カレンダーボタン + 過去追加ボタン
-                Button {
-                    showAddCalendar = true
-                } label: {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 22))
-                        .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
+                if showBackButton {
+                    // バックボタン
+                    Button {
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("戻る")
+                                .font(.gridBody)
+                        }
+                        .foregroundColor(isPurple ? .white.opacity(0.8) : .gridTextSecondary)
+                    }
+                } else {
+                    // 左：カレンダーボタン
+                    Button {
+                        showAddCalendar = true
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 22))
+                            .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
+                    }
                 }
 
                 Spacer()
