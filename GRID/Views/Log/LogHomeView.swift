@@ -1,11 +1,6 @@
 import SwiftUI
 import PhotosUI
 
-// MARK: - Navigation Destination Tag
-struct TimelineNavDestination: Hashable {
-    var targetSessionId: UUID?
-}
-
 struct LogHomeView: View {
     @EnvironmentObject var vm: AppViewModel
     @Environment(\.scenePhase) private var scenePhase
@@ -13,6 +8,11 @@ struct LogHomeView: View {
     @State private var session: Session = Session(sessionNumber: 1, date: Date())
     @State private var calendarExpanded = false
     @State private var calendarMonth: Date = Date()
+
+    // タイムライン表示（左スライドイン）
+    @State private var showTimeline = false
+    @State private var timelineSessionId: UUID? = nil
+    @State private var timelineStartIndex: Int? = nil
 
     @State private var showItemPicker = false
     @State private var isEditing = false
@@ -40,110 +40,126 @@ struct LogHomeView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $navPath) {
-            ZStack {
-                Color.gridBgPurple.ignoresSafeArea()
+        ZStack {
+            // ─── メインコンテンツ ───
+            NavigationStack(path: $navPath) {
+                ZStack {
+                    Color.gridBgPurple.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    headerView
+                    VStack(spacing: 0) {
+                        // カレンダーを最上部に
+                        calendarSection
+                            .padding(.top, GRIDLayout.headerTopPadding)
+                            .padding(.bottom, 4)
 
-                    // ─── カレンダーバー ───
-                    calendarSection
-                        .padding(.bottom, 8)
+                        // セッションヘッダー
+                        headerView
 
-                    // ─── セッション内容 ───
-                    List {
-                        exerciseListSections
-                        memoSection
-                        otherListSection
-                        Section { timelineNavRow }
-                        bottomSpacerRow
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .environment(\.editMode, .constant(isEditing ? .active : .inactive))
-                }
-            }
-            .navigationBarHidden(true)
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    if memoFocused {
-                        Button("完了") { memoFocused = false }
-                            .foregroundColor(.gridAccent)
+                        // ─── セッション内容 ───
+                        List {
+                            exerciseListSections
+                            memoSection
+                            otherListSection
+                            bottomSpacerRow
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .environment(\.editMode, .constant(isEditing ? .active : .inactive))
                     }
                 }
-            }
-            .navigationDestination(for: WorkoutEntry.self) { entry in
-                AddItemView(session: $session, entryId: entry.id)
-                    .environmentObject(vm)
-            }
-            .navigationDestination(for: TimelineNavDestination.self) { dest in
-                SessionTimelineView(showBackButton: true, initialSessionId: dest.targetSessionId)
-                    .environmentObject(vm)
-                    .navigationBarHidden(true)
-            }
-            .sheet(isPresented: $showItemPicker) {
-                ItemPickerSheet(session: $session)
-                    .environmentObject(vm)
-            }
-            .alert("体重を入力", isPresented: $showWeightInput) {
-                TextField("82.5", text: $weightInputText)
-                    .keyboardType(.decimalPad)
-                Button("保存") {
-                    if let w = Double(weightInputText) {
-                        session.bodyWeight = w
+                .navigationBarHidden(true)
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        if memoFocused {
+                            Button("完了") { memoFocused = false }
+                                .foregroundColor(.gridAccent)
+                        }
+                    }
+                }
+                .navigationDestination(for: WorkoutEntry.self) { entry in
+                    AddItemView(session: $session, entryId: entry.id)
+                        .environmentObject(vm)
+                }
+                .sheet(isPresented: $showItemPicker) {
+                    ItemPickerSheet(session: $session)
+                        .environmentObject(vm)
+                }
+                .alert("体重を入力", isPresented: $showWeightInput) {
+                    TextField("82.5", text: $weightInputText)
+                        .keyboardType(.decimalPad)
+                    Button("保存") {
+                        if let w = Double(weightInputText) {
+                            session.bodyWeight = w
+                            vm.updateSession(session)
+                        }
+                    }
+                    Button("キャンセル", role: .cancel) {}
+                }
+                .confirmationDialog("写真を追加", isPresented: $showPhotoSourceDialog) {
+                    Button("カメラで撮影") { showCamera = true }
+                    Button("ライブラリから選択") { showPhotoPicker = true }
+                    Button("キャンセル", role: .cancel) {}
+                }
+                .photosPicker(isPresented: $showPhotoPicker, selection: $photoPicker, matching: .images)
+                .onChange(of: photoPicker) { _, items in
+                    Task {
+                        for item in items {
+                            if let data = try? await item.loadTransferable(type: Data.self) {
+                                session.photosData.append(data)
+                            }
+                        }
+                        photoPicker = []
                         vm.updateSession(session)
                     }
                 }
-                Button("キャンセル", role: .cancel) {}
-            }
-            .confirmationDialog("写真を追加", isPresented: $showPhotoSourceDialog) {
-                Button("カメラで撮影") { showCamera = true }
-                Button("ライブラリから選択") { showPhotoPicker = true }
-                Button("キャンセル", role: .cancel) {}
-            }
-            .photosPicker(isPresented: $showPhotoPicker, selection: $photoPicker, matching: .images)
-            .onChange(of: photoPicker) { _, items in
-                Task {
-                    for item in items {
-                        if let data = try? await item.loadTransferable(type: Data.self) {
-                            session.photosData.append(data)
-                        }
+                .fullScreenCover(isPresented: $showPhotoViewer) {
+                    PhotoViewerView(photosData: $session.photosData)
+                }
+                .fullScreenCover(isPresented: $showCamera) {
+                    CameraView(imageData: $cameraImageData, saveToRoll: saveCameraPhotoToRoll)
+                        .ignoresSafeArea()
+                }
+                .onChange(of: cameraImageData) { _, data in
+                    if let data {
+                        session.photosData.append(data)
+                        vm.updateSession(session)
+                        cameraImageData = nil
                     }
-                    photoPicker = []
-                    vm.updateSession(session)
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .background { vm.removeEmptySessions() }
+                    if phase == .active { refreshSession() }
+                }
+                .onChange(of: vm.sessions) { _, _ in
+                    refreshSession()
                 }
             }
-            .fullScreenCover(isPresented: $showPhotoViewer) {
-                PhotoViewerView(photosData: $session.photosData)
-            }
-            .fullScreenCover(isPresented: $showCamera) {
-                CameraView(imageData: $cameraImageData, saveToRoll: saveCameraPhotoToRoll)
-                    .ignoresSafeArea()
-            }
-            .onChange(of: cameraImageData) { _, data in
-                if let data {
-                    session.photosData.append(data)
-                    vm.updateSession(session)
-                    cameraImageData = nil
-                }
-            }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .background { vm.removeEmptySessions() }
-                if phase == .active { refreshSession() }
-            }
-            .onChange(of: vm.sessions) { _, _ in
-                refreshSession()
+
+            // ─── タイムライン（左スライドイン）───
+            if showTimeline {
+                SessionTimelineView(
+                    showBackButton: true,
+                    initialSessionId: timelineSessionId,
+                    onBack: {
+                        withAnimation(.easeInOut(duration: 0.3)) { showTimeline = false }
+                    },
+                    startIndex: timelineStartIndex
+                )
+                .environmentObject(vm)
+                .transition(.move(edge: .leading))
+                .zIndex(1)
             }
         }
         .onAppear { refreshSession() }
+        .animation(.easeInOut(duration: 0.3), value: showTimeline)
     }
 
     // MARK: - ヘッダー
 
     private var headerView: some View {
-        HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 0) {
+            // セッション情報
             VStack(alignment: .leading, spacing: 4) {
                 Text("SESSION #\(session.sessionNumber)")
                     .font(.gridSmall)
@@ -168,38 +184,48 @@ struct LogHomeView: View {
                     .padding(.top, 6)
                 }
             }
-            Spacer()
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
 
-            // 追加 / 編集 ボタン群
-            HStack(spacing: 8) {
-                if !session.entries.isEmpty {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { isEditing.toggle() }
-                    } label: {
-                        Image(systemName: isEditing ? "checkmark" : "pencil")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(isEditing ? .white : .gridTextSecondary)
-                            .frame(width: 32, height: 32)
-                            .background(isEditing ? Color.gridAccent : Color.gridCard)
-                            .clipShape(Circle())
-                    }
-                }
+            // 追加 / 編集ボタン（AddMenuViewと同じスタイル）
+            HStack(spacing: 10) {
                 Button {
                     isEditing = false
                     showItemPicker = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.gridTextPrimary)
-                        .frame(width: 32, height: 32)
-                        .background(Color.gridCard)
-                        .clipShape(Circle())
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle")
+                        Text("追加")
+                            .font(.gridBody)
+                    }
+                    .foregroundColor(.gridTextPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.gridCardInner)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+
+                if !session.entries.isEmpty {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { isEditing.toggle() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: isEditing ? "checkmark.circle" : "pencil")
+                            Text(isEditing ? "完了" : "編集")
+                                .font(.gridBody)
+                        }
+                        .foregroundColor(isEditing ? .white : .gridTextPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(isEditing ? Color.gridAccent : Color.gridCardInner)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, GRIDLayout.headerTopPadding)
-        .padding(.bottom, 16)
     }
 
     // MARK: - カレンダーバー
@@ -226,30 +252,45 @@ struct LogHomeView: View {
         }
         let sessionDates = Set(vm.sessions.map { cal.startOfDay(for: $0.date) })
 
-        return HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(days, id: \.self) { day in
-                        dayCell(day: day, sessionDates: sessionDates, cal: cal, today: today)
-                    }
-                }
-                .padding(.horizontal, 24)
-            }
-
-            // 展開ボタン
+        return HStack(spacing: 8) {
+            // 左：スイッチアイコン（タイムラインへ）
             Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    calendarExpanded = true
-                }
+                openTimeline()
             } label: {
-                Image(systemName: "calendar")
-                    .font(.system(size: 16))
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.system(size: 14))
                     .foregroundColor(.gridTextSecondary)
                     .frame(width: 36, height: 36)
                     .background(Color.gridCard)
                     .clipShape(Circle())
             }
-            .padding(.trailing, 24)
+            .padding(.leading, 24)
+
+            // 右：日付ストリップ（スクロール）＋末尾にカレンダーアイコン
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // 先頭：カレンダー展開ボタン（左にスクロールすると現れる）
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            calendarExpanded = true
+                        }
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gridTextSecondary)
+                            .frame(width: 36, height: 36)
+                            .background(Color.gridCard)
+                            .clipShape(Circle())
+                    }
+
+                    ForEach(days, id: \.self) { day in
+                        dayCell(day: day, sessionDates: sessionDates, cal: cal, today: today)
+                    }
+                }
+                .padding(.leading, 24)
+                .padding(.trailing, 24)
+            }
+            .defaultScrollAnchor(.trailing)
         }
         .padding(.vertical, 4)
     }
@@ -261,15 +302,12 @@ struct LogHomeView: View {
         let weekday = shortWeekday(for: day)
 
         return Button {
-            if isToday {
-                // 今日はすでに表示中
-            } else {
-                // 過去の日付 → タイムラインへ
+            if !isToday {
                 let targetId = vm.sessions.first {
                     cal.isDate($0.date, inSameDayAs: day)
                 }?.id
                 if targetId != nil || hasSession {
-                    navPath.append(TimelineNavDestination(targetSessionId: targetId))
+                    openTimeline(targetSessionId: targetId)
                 }
             }
         } label: {
@@ -376,19 +414,17 @@ struct LogHomeView: View {
 
                                 Button {
                                     if !isFuture {
-                                        let targetId = vm.sessions.first {
-                                            cal.isDate($0.date, inSameDayAs: date)
-                                        }?.id
-                                        if isToday {
-                                            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                                                calendarExpanded = false
-                                            }
-                                        } else {
-                                            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                                                calendarExpanded = false
-                                            }
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                                            calendarExpanded = false
+                                        }
+                                        if !isToday {
+                                            let targetId = vm.sessions.first {
+                                                cal.isDate($0.date, inSameDayAs: date)
+                                            }?.id
                                             if targetId != nil || hasSession {
-                                                navPath.append(TimelineNavDestination(targetSessionId: targetId))
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                                    openTimeline(targetSessionId: targetId)
+                                                }
                                             }
                                         }
                                     }
@@ -506,8 +542,7 @@ struct LogHomeView: View {
 
     private var timelineNavRow: some View {
         Button {
-            let dest = TimelineNavDestination()
-            navPath.append(dest)
+            openTimeline()
         } label: {
             HStack {
                 Text("すべてのセッション")
@@ -533,9 +568,11 @@ struct LogHomeView: View {
         let itemName = vm.item(for: entry.itemId)?.name ?? "Unknown"
         return VStack(spacing: 0) {
             HStack(spacing: 14) {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 12))
-                    .foregroundColor(.gridTextTertiary)
+                if isEditing {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gridTextTertiary)
+                }
                 Text(itemName)
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
@@ -665,6 +702,23 @@ struct LogHomeView: View {
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, showOther ? 8 : 0)
+    }
+
+    // MARK: - タイムライン表示ヘルパー
+
+    private func openTimeline(targetSessionId: UUID? = nil) {
+        let sorted = vm.sessions.sorted { $0.date < $1.date }
+        if let targetId = targetSessionId,
+           let idx = sorted.firstIndex(where: { $0.id == targetId }) {
+            timelineSessionId = targetId
+            timelineStartIndex = idx
+        } else {
+            // 今日
+            let todayIdx = sorted.firstIndex { Calendar.current.isDateInToday($0.date) }
+            timelineSessionId = nil
+            timelineStartIndex = todayIdx
+        }
+        withAnimation(.easeInOut(duration: 0.3)) { showTimeline = true }
     }
 
     // MARK: - ヘルパー

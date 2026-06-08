@@ -8,6 +8,9 @@ struct SessionTimelineView: View {
 
     var showBackButton: Bool = false
     var initialSessionId: UUID? = nil
+    var onBack: (() -> Void)? = nil
+    /// 初期表示インデックス（指定時はonAppear前にcurrentIndexを設定）
+    var startIndex: Int? = nil
 
     private var sessions: [Session] {
         vm.sessions.sorted { $0.date < $1.date }
@@ -17,7 +20,19 @@ struct SessionTimelineView: View {
         sessions.firstIndex { Calendar.current.isDateInToday($0.date) } ?? 0
     }
 
-    @State private var currentIndex: Int = 0
+    @State private var currentIndex: Int
+
+    init(showBackButton: Bool = false,
+         initialSessionId: UUID? = nil,
+         onBack: (() -> Void)? = nil,
+         startIndex: Int? = nil) {
+        self.showBackButton = showBackButton
+        self.initialSessionId = initialSessionId
+        self.onBack = onBack
+        self.startIndex = startIndex
+        _currentIndex = State(initialValue: startIndex ?? 0)
+    }
+
     @State private var isPurple: Bool = false
     @State private var dwellTimer: Timer? = nil
     @State private var addMenuSession: Session? = nil
@@ -275,33 +290,32 @@ struct SessionTimelineView: View {
                 .animation(.none, value: currentIndex)
 
             HStack {
+                // 左：スイッチボタン（showBackButton時はLogHomeViewへ戻る）
                 if showBackButton {
-                    // バックボタン
                     Button {
-                        dismiss()
+                        if let onBack { onBack() } else { dismiss() }
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
-                            Text("戻る")
-                                .font(.gridBody)
-                        }
-                        .foregroundColor(isPurple ? .white.opacity(0.8) : .gridTextSecondary)
-                    }
-                } else {
-                    // 左：カレンダーボタン
-                    Button {
-                        showAddCalendar = true
-                    } label: {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 22))
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 14))
                             .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
                     }
+                } else {
+                    Color.clear.frame(width: 24, height: 32)
                 }
+
+                // スイッチの右：カレンダーボタン
+                Button {
+                    showAddCalendar = true
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 14))
+                        .foregroundColor(isPurple ? .white.opacity(0.7) : .gridTextSecondary)
+                }
+                .padding(.leading, 16)
 
                 Spacer()
 
-                // 右：Todayボタン（今日以外のとき）
+                // 右：今日ボタン（今日以外のとき）
                 if !isToday {
                     Button("今日") {
                         _ = vm.ensureTodaySession()
