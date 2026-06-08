@@ -140,15 +140,18 @@ struct LogHomeView: View {
 
             // ─── タイムライン（左スライドイン）───
             if showTimeline {
-                SessionTimelineView(
-                    showBackButton: true,
-                    initialSessionId: timelineSessionId,
-                    onBack: {
-                        withAnimation(.easeInOut(duration: 0.3)) { showTimeline = false }
-                    },
-                    startIndex: timelineStartIndex
-                )
-                .environmentObject(vm)
+                ZStack {
+                    Color.gridBg.ignoresSafeArea()
+                    SessionTimelineView(
+                        showBackButton: true,
+                        initialSessionId: timelineSessionId,
+                        onBack: {
+                            withAnimation(.easeInOut(duration: 0.3)) { showTimeline = false }
+                        },
+                        startIndex: timelineStartIndex
+                    )
+                    .environmentObject(vm)
+                }
                 .transition(.move(edge: .leading))
                 .zIndex(1)
             }
@@ -570,11 +573,6 @@ struct LogHomeView: View {
         let itemName = vm.item(for: entry.itemId)?.name ?? "Unknown"
         return VStack(spacing: 0) {
             HStack(spacing: 14) {
-                if isEditing {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gridTextTertiary)
-                }
                 Text(itemName)
                     .font(.gridBody)
                     .foregroundColor(.gridTextPrimary)
