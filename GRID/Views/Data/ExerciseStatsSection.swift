@@ -1,11 +1,18 @@
 import SwiftUI
 
+enum ExerciseDisplayMode: String, CaseIterable {
+    case volume  = "ボリューム"
+    case maxWeight = "Max重量"
+    case chart   = "チャート"
+}
+
 struct ExerciseStatsSection: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var showLatest: Bool = true
     @State private var selectedGroup: MuscleGroup = .chest
     @State private var selectedItem: Item? = nil
     @State private var selectedLog: AppViewModel.ExerciseSessionLog? = nil
+    @State private var displayMode: ExerciseDisplayMode = .volume
 
     /// 直近セッション（エントリがある最新のもの）
     private var latestSession: Session? {
@@ -230,13 +237,11 @@ struct ExerciseStatsSection: View {
     // MARK: - 階層2: 日付別リスト
 
     private func exerciseDetailView(stat: AppViewModel.ExerciseStat) -> some View {
-        let logs       = vm.sessionLogs(for: stat.item)
+        let logs = vm.sessionLogs(for: stat.item)
         let allTimeMax = stat.allTimeMax
         let recentMax  = stat.recentMonthMax
-        let bestLog    = logs.first { $0.maxWeight == allTimeMax }
-        let recentLog: AppViewModel.ExerciseSessionLog? = recentMax.flatMap { rm in
-            logs.first { $0.maxWeight == rm }
-        }
+        let bestMaxLog = logs.first { $0.maxWeight == allTimeMax }
+        let bestVolLog = logs.max { volumeOf($0) < volumeOf($1) }
 
         return VStack(alignment: .leading, spacing: 0) {
             // 戻るボタン + 種目名
@@ -246,18 +251,37 @@ struct ExerciseStatsSection: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 14)
 
-            // ベスト / 直近1ヶ月Max チップ
-            HStack(spacing: 12) {
-                statChip(label: "ベストパフォーマンス",
-                         value: String(format: "%.1f kg", allTimeMax))
-                statChip(label: "直近1ヶ月のMax",
-                         value: recentMax.map { String(format: "%.1f kg", $0) } ?? "—")
+            // サマリーチップ（モードで切替）
+            if displayMode == .volume {
+                let bestVol = logs.map { volumeOf($0) }.max() ?? 0
+                HStack(spacing: 12) {
+                    statChip(label: "ベストボリューム",
+                             value: volumeText(bestVol))
+                    statChip(label: "直近1ヶ月のMax",
+                             value: recentMax.map { String(format: "%.1f kg", $0) } ?? "—")
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 12)
+            } else if displayMode == .maxWeight {
+                HStack(spacing: 12) {
+                    statChip(label: "ベストパフォーマンス",
+                             value: String(format: "%.1f kg", allTimeMax))
+                    statChip(label: "直近1ヶ月のMax",
+                             value: recentMax.map { String(format: "%.1f kg", $0) } ?? "—")
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 12)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
 
-            // 日付別リスト
-            if logs.isEmpty {
+            // 表示モード セレクター
+            displayModeSelector
+                .padding(.horizontal, 24)
+                .padding(.bottom, 12)
+
+            if displayMode == .chart {
+                // チャートビュー
+                exerciseChartView(logs: logs, stat: stat)
+            } else if logs.isEmpty {
                 Text("データがありません")
                     .font(.gridBody)
                     .foregroundColor(.gridTextSecondary)
@@ -265,16 +289,17 @@ struct ExerciseStatsSection: View {
                     .padding(.vertical, 32)
                     .padding(.horizontal, 24)
             } else {
+                // 日付別リスト
                 ScrollView {
                     VStack(spacing: 2) {
                         ForEach(logs) { log in
-                            let isBest   = log.id == bestLog?.id
-                            let isRecent = !isBest && log.id == recentLog?.id
+                            let vol = volumeOf(log)
+                            let isBest = displayMode == .volume
+                                ? log.id == bestVolLog?.id
+                                : log.id == bestMaxLog?.id
 
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedLog = log
-                                }
+                                withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
                             } label: {
                                 HStack(spacing: 0) {
                                     Text(log.dateString)
@@ -282,7 +307,9 @@ struct ExerciseStatsSection: View {
                                         .foregroundColor(.gridTextSecondary)
                                         .frame(width: 72, alignment: .leading)
 
-                                    Text(String(format: "%.1f kg", log.maxWeight))
+                                    Text(displayMode == .volume
+                                         ? volumeText(vol)
+                                         : String(format: "%.1f kg", log.maxWeight))
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(.gridTextPrimary)
 
@@ -290,8 +317,6 @@ struct ExerciseStatsSection: View {
 
                                     if isBest {
                                         badge(text: "Best", color: .gridAccent)
-                                    } else if isRecent {
-                                        badge(text: "Max", color: Color(red: 1.0, green: 0.6, blue: 0.2))
                                     }
 
                                     Image(systemName: "chevron.right")
@@ -301,11 +326,7 @@ struct ExerciseStatsSection: View {
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 13)
-                                .background(
-                                    isBest   ? Color.gridAccent.opacity(0.10) :
-                                    isRecent ? Color.orange.opacity(0.08) :
-                                               Color.gridCard
-                                )
+                                .background(isBest ? Color.gridAccent.opacity(0.10) : Color.gridCard)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                             .buttonStyle(.plain)
@@ -315,6 +336,118 @@ struct ExerciseStatsSection: View {
                     }
                     .padding(.top, 4)
                 }
+            }
+        }
+    }
+
+    // MARK: - 表示モードセレクター
+
+    private var displayModeSelector: some View {
+        HStack(spacing: 0) {
+            ForEach(ExerciseDisplayMode.allCases, id: \.self) { mode in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { displayMode = mode }
+                } label: {
+                    Text(mode.rawValue)
+                        .font(.system(size: 13, weight: displayMode == mode ? .semibold : .regular))
+                        .foregroundColor(displayMode == mode ? .white : .gridTextSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(displayMode == mode ? Color.gridAccent : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Color.gridCard)
+        .clipShape(RoundedRectangle(cornerRadius: 11))
+    }
+
+    // MARK: - チャート
+
+    private func exerciseChartView(logs: [AppViewModel.ExerciseSessionLog], stat: AppViewModel.ExerciseStat) -> some View {
+        let chartData: [(Date, Double)] = logs.map { log in
+            (log.date, displayMode == .volume ? volumeOf(log) : log.maxWeight)
+        }
+        let maxVal = chartData.map(\.1).max() ?? 1
+        let minVal = chartData.map(\.1).min() ?? 0
+        let range  = max(maxVal - minVal, 1)
+
+        return ScrollView {
+            VStack(spacing: 16) {
+                // ラインチャート
+                GeometryReader { geo in
+                    Canvas { ctx, size in
+                        guard chartData.count >= 2 else { return }
+                        let pts = chartData.enumerated().map { i, pt -> CGPoint in
+                            let x = size.width * CGFloat(i) / CGFloat(chartData.count - 1)
+                            let y = size.height - size.height * CGFloat((pt.1 - minVal) / range) * 0.8 - size.height * 0.1
+                            return CGPoint(x: x, y: y)
+                        }
+                        var path = Path()
+                        path.move(to: pts[0])
+                        for pt in pts.dropFirst() { path.addLine(to: pt) }
+                        ctx.stroke(path, with: .color(Color.gridAccent.opacity(0.7)), lineWidth: 2)
+
+                        for (i, pt) in pts.enumerated() {
+                            let r: CGFloat = 4
+                            let rect = CGRect(x: pt.x - r, y: pt.y - r, width: r*2, height: r*2)
+                            ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridBg))
+                            ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridAccent))
+
+                            // 日付ラベル（間引き）
+                            if chartData.count <= 6 || i % max(1, chartData.count / 5) == 0 {
+                                var text = AttributedString(chartData[i].0.formatted(.dateTime.month().day()))
+                                text.font = .system(size: 10)
+                                text.foregroundColor = Color.gridTextTertiary
+                                ctx.draw(Text(chartData[i].0.formatted(.dateTime.month().day()))
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gridTextTertiary),
+                                    at: CGPoint(x: pt.x, y: size.height - 4),
+                                    anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+                .frame(height: 160)
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+
+                // 日付別リスト（チャート下にも表示）
+                VStack(spacing: 2) {
+                    ForEach(logs) { log in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
+                        } label: {
+                            HStack(spacing: 0) {
+                                Text(log.dateString)
+                                    .font(.gridBody)
+                                    .foregroundColor(.gridTextSecondary)
+                                    .frame(width: 72, alignment: .leading)
+                                Text(volumeText(volumeOf(log)))
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(.gridTextPrimary)
+                                Spacer()
+                                Text(String(format: "%.1f kg", log.maxWeight))
+                                    .font(.gridCaption)
+                                    .foregroundColor(.gridTextTertiary)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gridTextTertiary)
+                                    .padding(.leading, 8)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(Color.gridCard)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 24)
+                    }
+                    Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
+                }
+                .padding(.top, 4)
             }
         }
     }
@@ -381,6 +514,12 @@ struct ExerciseStatsSection: View {
                     }
                     .background(Color.gridCard)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                    // ボリューム & Max重量 サマリー
+                    HStack(spacing: 12) {
+                        statChip(label: "ボリューム", value: volumeText(volumeOf(log)))
+                        statChip(label: "Max重量", value: String(format: "%.1f kg", log.maxWeight))
+                    }
 
                     // メモ（あれば）
                     if !log.memo.isEmpty {
@@ -468,6 +607,18 @@ struct ExerciseStatsSection: View {
             .padding(.vertical, 4)
             .background(color.opacity(0.15))
             .clipShape(Capsule())
+    }
+
+    /// ボリューム計算（重量 × 回数 の全セット合計）
+    private func volumeOf(_ log: AppViewModel.ExerciseSessionLog) -> Double {
+        log.sets.reduce(0) { $0 + $1.weight * Double($1.reps) }
+    }
+
+    /// ボリュームの表示文字列
+    private func volumeText(_ vol: Double) -> String {
+        vol >= 1000
+            ? String(format: "%.1f t", vol / 1000)
+            : String(format: "%.0f kg", vol)
     }
 
     private func weightText(_ w: Double) -> String {
