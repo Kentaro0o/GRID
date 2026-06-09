@@ -19,10 +19,20 @@ struct AddItemView: View {
     @State private var timerEndDate: Date? = nil   // バックグラウンド対応用
     @State private var showEditItem = false
     @State private var keyboardHeight: CGFloat = 0
+    // セット入力（タイマーと同じ仕組み）
+    @State private var fieldTyped: String = ""
+    @State private var fieldHasTyped: Bool = false
+    @State private var savedFieldDouble: Double = 0  // weight保存値
+    @State private var savedFieldInt: Int = 0        // reps保存値
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focusedField: Field?
 
-    enum Field { case weight, reps, memo, timer }
+    enum Field: Hashable {
+        case weight(Int)  // setIdx
+        case reps(Int)    // setIdx
+        case memo
+        case timer
+    }
 
     private var entryIndex: Int? {
         session.entries.firstIndex { $0.id == entryId }
@@ -183,6 +193,60 @@ struct AddItemView: View {
             vm.hideTabBar = false
             timer?.invalidate()
         }
+        // fieldTyped の変化 → weight/reps に反映
+        .onChange(of: fieldTyped) { oldVal, val in
+            guard let entryIdx = entryIndex else { return }
+            switch focusedField {
+            case .weight:
+                let filtered = String(val.filter { $0.isNumber || $0 == "." })
+                if filtered != val { fieldTyped = filtered; return }
+                // 文字が増えた時だけ「入力あり」と判定
+                if filtered.count > oldVal.filter({ $0.isNumber || $0 == "." }).count {
+                    fieldHasTyped = true
+                }
+            case .reps:
+                let filtered = String(val.filter { $0.isNumber })
+                if filtered != val { fieldTyped = filtered; return }
+                if filtered.count > oldVal.filter({ $0.isNumber }).count {
+                    fieldHasTyped = true
+                }
+            default: break
+            }
+        }
+        // フォーカス変化 → 前フィールドの値を確定、新フィールドの保存値をセット
+        .onChange(of: focusedField) { oldField, newField in
+            guard let entryIdx = entryIndex else { return }
+            // 前フィールドへの入力を確定
+            if let old = oldField {
+                switch old {
+                case .weight(let si):
+                    if fieldHasTyped {
+                        let v = Double(fieldTyped) ?? savedFieldDouble
+                        session.entries[entryIdx].sets[si].weight = v
+                    }
+                    // hasTyped=false なら savedFieldDouble のまま（変更なし）
+                case .reps(let si):
+                    if fieldHasTyped {
+                        session.entries[entryIdx].sets[si].reps = Int(fieldTyped) ?? savedFieldInt
+                    }
+                default: break
+                }
+            }
+            // 新フィールドの保存値をセット
+            fieldTyped = ""
+            fieldHasTyped = false
+            if let nf = newField {
+                switch nf {
+                case .weight(let si):
+                    guard si < session.entries[entryIdx].sets.count else { break }
+                    savedFieldDouble = session.entries[entryIdx].sets[si].weight
+                case .reps(let si):
+                    guard si < session.entries[entryIdx].sets.count else { break }
+                    savedFieldInt = session.entries[entryIdx].sets[si].reps
+                default: break
+                }
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, timerRunning, let endDate = timerEndDate {
                 // フォアグラウンド復帰時に残り時間を再計算
@@ -199,7 +263,7 @@ struct AddItemView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                if focusedField != .timer {
+                if focusedField != .timer && focusedField != .memo {
                     Button("完了") {
                         focusedField = nil
                     }
@@ -227,90 +291,121 @@ struct AddItemView: View {
     // MARK: - Set row
 
     private func setRow(entryIdx: Int, setIdx: Int) -> some View {
-        VStack(spacing: 0) {
-        HStack(spacing: 12) {
-            // Set number
-            Text("\(setIdx + 1)")
-                .font(.gridCaption)
-                .foregroundColor(.gridTextSecondary)
-                .frame(width: 20)
+        let weightFocused = focusedField == .weight(setIdx)
+        let repsFocused   = focusedField == .reps(setIdx)
+        let weight = session.entries[entryIdx].sets[setIdx].weight
+        let reps   = session.entries[entryIdx].sets[setIdx].reps
 
-            // Weight
-            HStack(spacing: 4) {
-                TextField(
-                    "",
-                    text: Binding(
-                        get: {
-                            let w = session.entries[entryIdx].sets[setIdx].weight
-                            return w == 0 ? "" : (w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w))
-                        },
-                        set: { session.entries[entryIdx].sets[setIdx].weight = Double($0) ?? 0 }
-                    )
-                )
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.center)
-                .frame(width: 56)
-                .padding(.vertical, 8)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .font(.gridBody)
-                .foregroundColor(.gridTextPrimary)
-                .focused($focusedField, equals: .weight)
-                .placeholder(when: session.entries[entryIdx].sets[setIdx].weight == 0) {
-                    Text("－").foregroundColor(.gridTextTertiary).font(.gridBody)
-                }
-                Text("Kg")
+        return VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                // Set number
+                Text("\(setIdx + 1)")
                     .font(.gridCaption)
                     .foregroundColor(.gridTextSecondary)
-            }
+                    .frame(width: 20)
 
-            // Reps
-            HStack(spacing: 4) {
-                TextField(
-                    "",
-                    text: Binding(
-                        get: {
-                            let r = session.entries[entryIdx].sets[setIdx].reps
-                            return r == 0 ? "" : String(r)
-                        },
-                        set: { session.entries[entryIdx].sets[setIdx].reps = Int($0) ?? 0 }
-                    )
-                )
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.center)
-                .frame(width: 44)
-                .padding(.vertical, 8)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .font(.gridBody)
-                .foregroundColor(.gridTextPrimary)
-                .focused($focusedField, equals: .reps)
-                .placeholder(when: session.entries[entryIdx].sets[setIdx].reps == 0) {
-                    Text("－").foregroundColor(.gridTextTertiary).font(.gridBody)
+                // ─── Weight ───
+                HStack(spacing: 4) {
+                    ZStack {
+                        // hidden TextField（キーボード入力受け取り）
+                        TextField("", text: $fieldTyped)
+                            .keyboardType(.decimalPad)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.01)
+                            .focused($focusedField, equals: .weight(setIdx))
+
+                        // 色分け表示
+                        Group {
+                            if weightFocused {
+                                if fieldHasTyped {
+                                    Text(fieldTyped.isEmpty ? "0" : fieldTyped)
+                                        .foregroundColor(.gridAccent)
+                                } else if weight == 0 {
+                                    // 新規（値なし）フォーカス中 → 💪
+                                    Text("💪")
+                                        .foregroundColor(.gridTextTertiary)
+                                } else {
+                                    Text(weightDisplayString(weight))
+                                        .foregroundColor(.gridTextTertiary)
+                                }
+                            } else {
+                                Text(weight == 0 ? "－" : weightDisplayString(weight))
+                                    .foregroundColor(weight == 0 ? .gridTextTertiary : .gridTextPrimary)
+                            }
+                        }
+                        .font(.gridBody)
+                        .frame(width: 56)
+                        .multilineTextAlignment(.center)
+                        .contentShape(Rectangle())
+                        .onTapGesture { focusedField = .weight(setIdx) }
+                    }
+                    Text("Kg")
+                        .font(.gridCaption)
+                        .foregroundColor(.gridTextSecondary)
                 }
-                Text("回")
-                    .font(.gridCaption)
-                    .foregroundColor(.gridTextSecondary)
-            }
 
-            Spacer()
+                // ─── Reps ───
+                HStack(spacing: 4) {
+                    ZStack {
+                        TextField("", text: $fieldTyped)
+                            .keyboardType(.numberPad)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.01)
+                            .focused($focusedField, equals: .reps(setIdx))
 
-            // Delete
-            Button {
-                if session.entries[entryIdx].sets.count > 1 {
-                    session.entries[entryIdx].sets.remove(at: setIdx)
+                        Group {
+                            if repsFocused {
+                                if fieldHasTyped {
+                                    Text(fieldTyped.isEmpty ? "0" : fieldTyped)
+                                        .foregroundColor(.gridAccent)
+                                } else if reps == 0 {
+                                    // 新規（値なし）フォーカス中 → 💪
+                                    Text("💪")
+                                        .foregroundColor(.gridTextTertiary)
+                                } else {
+                                    Text(String(reps))
+                                        .foregroundColor(.gridTextTertiary)
+                                }
+                            } else {
+                                Text(reps == 0 ? "－" : String(reps))
+                                    .foregroundColor(reps == 0 ? .gridTextTertiary : .gridTextPrimary)
+                            }
+                        }
+                        .font(.gridBody)
+                        .frame(width: 44)
+                        .multilineTextAlignment(.center)
+                        .contentShape(Rectangle())
+                        .onTapGesture { focusedField = .reps(setIdx) }
+                    }
+                    Text("回")
+                        .font(.gridCaption)
+                        .foregroundColor(.gridTextSecondary)
                 }
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gridTextTertiary)
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
 
-        Divider()
-            .background(Color.gridCardInner)
+                Spacer()
+
+                // Delete
+                Button {
+                    if session.entries[entryIdx].sets.count > 1 {
+                        session.entries[entryIdx].sets.remove(at: setIdx)
+                    }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gridTextTertiary)
+                }
+            }
             .padding(.horizontal, 24)
-        } // VStack
+            .padding(.vertical, 16)
+
+            Divider()
+                .background(Color.gridCardInner)
+                .padding(.horizontal, 24)
+        }
+    }
+
+    private func weightDisplayString(_ w: Double) -> String {
+        w.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(w)) : String(w)
     }
 
     // MARK: - Timer panel
