@@ -549,9 +549,8 @@ struct ExerciseStatsSection: View {
         VStack(alignment: .leading, spacing: 0) {
             // 戻るボタン + 日付 / このセッションへ
             HStack {
-                backButton(title: showLatest ? itemName : log.dateString) {
-                    selectedLog  = nil
-                    if showLatest { selectedItem = nil }
+                backButton(title: log.dateString) {
+                    selectedLog = nil
                 }
                 Spacer()
                 Button {
