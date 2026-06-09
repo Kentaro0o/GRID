@@ -239,50 +239,42 @@ struct ExerciseStatsSection: View {
     // MARK: - 階層2: 日付別リスト
 
     private func exerciseDetailView(stat: AppViewModel.ExerciseStat) -> some View {
-        let logs       = vm.sessionLogs(for: stat.item)
-        let allTimeMax = stat.allTimeMax
-        let recentMax  = stat.recentMonthMax
+        let logs        = vm.sessionLogs(for: stat.item)
         let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
         let recentLogs  = logs.filter { $0.date >= oneMonthAgo }
 
-        let bestMaxVal   = allTimeMax
-        let recentMaxVal = recentMax
-
-        let allVols    = logs.map { volumeOf($0) }
-        let bestVolVal = allVols.max() ?? 0
-        let recentVolVal = recentLogs.map { volumeOf($0) }.max()
-
-        let bestLog = displayMode == .volume
+        // ベスト & 直近ベストのログを両モードで取得
+        let bestLog: AppViewModel.ExerciseSessionLog? = displayMode == .volume
             ? logs.max { volumeOf($0) < volumeOf($1) }
-            : logs.first { $0.maxWeight == allTimeMax }
+            : logs.first { $0.maxWeight == stat.allTimeMax }
+
+        let recentBestLog: AppViewModel.ExerciseSessionLog? = displayMode == .volume
+            ? recentLogs.max { volumeOf($0) < volumeOf($1) }
+            : recentLogs.max { $0.maxWeight < $1.maxWeight }
+
+        // 表示値
+        let bestVal     = displayMode == .volume ? volumeText(logs.map { volumeOf($0) }.max() ?? 0)
+                                                 : String(format: "%.1f kg", stat.allTimeMax)
+        let recentVal   = displayMode == .volume
+            ? recentLogs.map { volumeOf($0) }.max().map { volumeText($0) } ?? "—"
+            : stat.recentMonthMax.map { String(format: "%.1f kg", $0) } ?? "—"
+
+        // チャートジャンプ用ヘルパー
+        func jumpChart(to log: AppViewModel.ExerciseSessionLog?) {
+            guard let log, let idx = logs.firstIndex(where: { $0.id == log.id }) else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { chartCenterIndex = idx }
+        }
 
         return VStack(alignment: .leading, spacing: 0) {
-            // ヘッダー：戻るボタン（チップの代わりに上部表示）
-            backButton(title: stat.item.name) {
-                selectedItem = nil
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 12)
+            // ヘッダー
+            backButton(title: stat.item.name) { selectedItem = nil }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 12)
 
             // ① ボリューム / Max重量 セレクター
             displayModeSelector
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
-
-            // ② ベスト / 直近1ヶ月のベスト チップ
-            HStack(spacing: 12) {
-                if displayMode == .volume {
-                    statChip(label: "ベスト", value: volumeText(bestVolVal))
-                    statChip(label: "直近1ヶ月のベスト",
-                             value: recentVolVal.map { volumeText($0) } ?? "—")
-                } else {
-                    statChip(label: "ベスト", value: String(format: "%.1f kg", bestMaxVal))
-                    statChip(label: "直近1ヶ月のベスト",
-                             value: recentMaxVal.map { String(format: "%.1f kg", $0) } ?? "—")
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 8)
 
             if logs.isEmpty {
                 Text("データがありません")
@@ -292,51 +284,87 @@ struct ExerciseStatsSection: View {
                     .padding(.vertical, 32)
                     .padding(.horizontal, 24)
             } else {
-                // ③ チャート固定（ScrollView外）
+                // ② チャート固定
                 scrollableChart(logs: logs)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 4)
 
-                // ④ 日付リストのみスクロール
+                // ③ スクロール領域（ベストチップ＋日付リスト）
                 ScrollViewReader { listProxy in
                     ScrollView {
                         VStack(spacing: 2) {
+                            // ベスト / 直近1ヶ月のベスト チップ
+                            HStack(spacing: 12) {
+                                tappableStatChip(label: "ベスト", value: bestVal,
+                                                 hasTarget: bestLog != nil) {
+                                    jumpChart(to: bestLog)
+                                }
+                                tappableStatChip(label: "直近1ヶ月のベスト", value: recentVal,
+                                                 hasTarget: recentBestLog != nil) {
+                                    jumpChart(to: recentBestLog)
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 8)
+                            .padding(.top, 4)
+
                             ForEach(Array(logs.enumerated()), id: \.element.id) { idx, log in
                                 let isBest        = log.id == bestLog?.id
                                 let isChartCenter = idx == chartCenterIndex
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
-                                } label: {
-                                    HStack(spacing: 0) {
-                                        Text(log.dateString)
-                                            .font(.gridBody)
-                                            .foregroundColor(.gridTextSecondary)
-                                            .frame(width: 72, alignment: .leading)
-                                        Text(displayMode == .volume
-                                             ? volumeText(volumeOf(log))
-                                             : String(format: "%.1f kg", log.maxWeight))
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.gridTextPrimary)
-                                        Spacer()
-                                        if isChartCenter {
-                                            badge(text: "チャート", color: Color(red: 0.4, green: 0.8, blue: 1.0))
-                                        } else if isBest {
-                                            badge(text: "Best", color: .gridAccent)
+                                HStack(spacing: 0) {
+                                    // 左：チャート同期ボタン
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            chartCenterIndex = idx
                                         }
-                                        Image(systemName: "chevron.right")
+                                    } label: {
+                                        Image(systemName: "chart.line.uptrend.xyaxis")
                                             .font(.system(size: 12))
-                                            .foregroundColor(.gridTextTertiary)
-                                            .padding(.leading, 10)
+                                            .foregroundColor(isChartCenter
+                                                ? Color(red: 0.4, green: 0.8, blue: 1.0)
+                                                : .gridTextTertiary.opacity(0.4))
+                                            .frame(width: 40)
+                                            .frame(maxHeight: .infinity)
+                                            .contentShape(Rectangle())
                                     }
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 13)
-                                    .background(
-                                        isChartCenter ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.15) :
-                                        isBest        ? Color.gridAccent.opacity(0.10) :
-                                                        Color.gridCard
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .buttonStyle(.plain)
+
+                                    // 右：セット詳細へ
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
+                                    } label: {
+                                        HStack(spacing: 0) {
+                                            Text(log.dateString)
+                                                .font(.gridBody)
+                                                .foregroundColor(.gridTextSecondary)
+                                                .frame(width: 72, alignment: .leading)
+                                            Text(displayMode == .volume
+                                                 ? volumeText(volumeOf(log))
+                                                 : String(format: "%.1f kg", log.maxWeight))
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(.gridTextPrimary)
+                                            Spacer()
+                                            if isChartCenter {
+                                                badge(text: "チャート", color: Color(red: 0.4, green: 0.8, blue: 1.0))
+                                            } else if isBest {
+                                                badge(text: "Best", color: .gridAccent)
+                                            }
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.gridTextTertiary)
+                                                .padding(.leading, 10)
+                                        }
+                                        .padding(.trailing, 20)
+                                        .padding(.vertical, 13)
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
+                                .background(
+                                    isChartCenter ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.15) :
+                                    isBest        ? Color.gridAccent.opacity(0.10) :
+                                                    Color.gridCard
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .padding(.horizontal, 24)
                                 .id(log.id)
                             }
@@ -351,6 +379,40 @@ struct ExerciseStatsSection: View {
                 }
             }
         }
+    }
+
+    /// タップでチャートジャンプできるサマリーチップ
+    private func tappableStatChip(label: String, value: String,
+                                   hasTarget: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text(label)
+                        .font(.gridCaption)
+                        .foregroundColor(.gridTextSecondary)
+                    if hasTarget {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 9))
+                            .foregroundColor(.gridTextTertiary)
+                    }
+                }
+                Text(value)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gridTextPrimary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.gridCard)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                hasTarget
+                    ? RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gridTextTertiary.opacity(0.2), lineWidth: 1)
+                    : nil
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - 表示モードセレクター

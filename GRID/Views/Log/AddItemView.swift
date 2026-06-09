@@ -263,7 +263,7 @@ struct AddItemView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                if focusedField != .timer && focusedField != .memo {
+                if focusedField != .timer {
                     Button("完了") {
                         focusedField = nil
                     }
