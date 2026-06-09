@@ -96,7 +96,12 @@ struct WeightSection: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
-                // ─── 基準ピル（選択中のみ表示）───
+                // ─── チャート ───
+                if !weightSessions.isEmpty {
+                    WeightScrollChart(sessions: weightSessions, selectedId: $referenceId)
+                }
+
+                // ─── 基準ピル（チャート直下）───
                 if let ref = referenceSession, let w = ref.bodyWeight {
                     Button {
                         vm.navigateToSessionId = ref.id
@@ -123,8 +128,11 @@ struct WeightSection: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
+                } else {
+                    Spacer().frame(height: 12)
                 }
 
                 // ─── リスト ───
@@ -157,9 +165,7 @@ struct WeightSection: View {
                         .overlay(alignment: .bottom) {
                             if !isLatestVisible, let latest = latestSession, let w = latest.bodyWeight {
                                 latestFloatBar(session: latest, weight: w) {
-                                    withAnimation {
-                                        proxy.scrollTo(latest.id, anchor: .bottom)
-                                    }
+                                    withAnimation { proxy.scrollTo(latest.id, anchor: .bottom) }
                                 }
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
@@ -169,6 +175,10 @@ struct WeightSection: View {
                             if let id = latestSession?.id {
                                 proxy.scrollTo(id, anchor: .bottom)
                             }
+                        }
+                        .onChange(of: referenceId) { _, id in
+                            guard let id else { return }
+                            withAnimation { proxy.scrollTo(id, anchor: .center) }
                         }
                     }
                 }

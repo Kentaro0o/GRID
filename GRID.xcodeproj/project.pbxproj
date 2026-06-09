@@ -35,12 +35,14 @@
 		E550C6255B6B0E57D337F5ED /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AD33BF1B497BF634D49AA04 /* DataView.swift */; };
 		E9A0239B6A02851F3EEAD05A /* PhotoGridSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DABC065D2229BDD38BD3F67 /* PhotoGridSection.swift */; };
 		FB6990ED804B23F5F6222C34 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = B069E0AF5A06DBB6EAEBE9A1 /* Item.swift */; };
+		DDEB5602C74D6D46AAA3F370 /* WeightScrollChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCEAF0CB65011246A98B9EA9 /* WeightScrollChart.swift */; };
 		FE699E360B1371C9BFE8B91D /* WeightLineChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */; };
 		FFCA0A00A3F2BFB67AEDBAFE /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4B10FD50A291D92412ACDF /* MainTabView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0AD33BF1B497BF634D49AA04 /* DataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataView.swift; sourceTree = "<group>"; };
+		CCEAF0CB65011246A98B9EA9 /* WeightScrollChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightScrollChart.swift; sourceTree = "<group>"; };
 		1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightLineChart.swift; sourceTree = "<group>"; };
 		24929EE7E57DA81A00BED4A0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		29DAB92B22AF980D5B4C853B /* WorkoutEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutEntry.swift; sourceTree = "<group>"; };
@@ -171,6 +173,7 @@
 				58C155F24F7097B09754F121 /* CameraView.swift */,
 				964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */,
 				C31FCB777631A88BFF10FED7 /* PhotoViewerView.swift */,
+				CCEAF0CB65011246A98B9EA9 /* WeightScrollChart.swift */,
 				1EC3C8337A0EC986FB03E6E9 /* WeightLineChart.swift */,
 			);
 			path = Components;
@@ -307,6 +310,7 @@
 				349353F4343CD00C350FDC34 /* SessionTimelineView.swift in Sources */,
 				9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */,
 				26527940179FE4C9C703A5D9 /* ViewItemView.swift in Sources */,
+				DDEB5602C74D6D46AAA3F370 /* WeightScrollChart.swift in Sources */,
 				FE699E360B1371C9BFE8B91D /* WeightLineChart.swift in Sources */,
 				6A543DD462B1703741F1CFC3 /* WeightListView.swift in Sources */,
 				676EC904819263C7381A55E3 /* WorkoutEntry.swift in Sources */,

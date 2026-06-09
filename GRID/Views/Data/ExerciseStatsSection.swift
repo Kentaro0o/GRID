@@ -320,7 +320,7 @@ struct ExerciseStatsSection: View {
                                                 .foregroundColor(.gridTextPrimary)
                                             Spacer()
                                             if isChartCenter {
-                                                badge(text: "チャート", color: Color.gridAccent.opacity(0.7))
+                                                badge(text: "チャート", color: Color(red: 0.4, green: 0.8, blue: 1.0))
                                             } else if isBest {
                                                 badge(text: "Best", color: .gridAccent)
                                             }
@@ -332,7 +332,7 @@ struct ExerciseStatsSection: View {
                                         .padding(.horizontal, 20)
                                         .padding(.vertical, 13)
                                         .background(
-                                            isChartCenter ? Color.gridAccent.opacity(0.07) :
+                                            isChartCenter ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.15) :
                                             isBest        ? Color.gridAccent.opacity(0.10) :
                                                             Color.gridCard
                                         )
@@ -379,74 +379,77 @@ struct ExerciseStatsSection: View {
     // MARK: - 横スクロールチャート
 
     private let chartItemWidth: CGFloat = 56
-    private let chartVisibleCount: Int  = 5
+    private let chartHPad: CGFloat = 24
 
     private func scrollableChart(logs: [AppViewModel.ExerciseSessionLog]) -> some View {
         let values: [Double] = logs.map { displayMode == .volume ? volumeOf($0) : $0.maxWeight }
-        let maxVal = values.max() ?? 1
-        let minVal = values.min() ?? 0
+        let maxVal = (values.max() ?? 1)
+        let minVal = (values.min() ?? 0)
         let range  = max(maxVal - minVal, 1)
-        let chartH: CGFloat = 110
-        let dotAreaH: CGFloat = chartH - 18  // 下18ptは日付ラベル
+        let chartH: CGFloat  = 110
+        let labelH: CGFloat  = 18
+        let plotH: CGFloat   = chartH - labelH
+        let totalW: CGFloat  = chartItemWidth * CGFloat(values.count) + chartHPad * 2
+
+        // 各インデックスの中心X・Y座標を計算するヘルパー
+        func xPos(_ i: Int) -> CGFloat {
+            chartHPad + chartItemWidth * CGFloat(i) + chartItemWidth / 2
+        }
+        func yPos(_ v: Double) -> CGFloat {
+            plotH * (1 - CGFloat((v - minVal) / range) * 0.8 - 0.1)
+        }
 
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                ForEach(Array(values.enumerated()), id: \.offset) { i, v in
-                    let isCenter = i == chartCenterIndex
-                    let yRatio   = CGFloat((v - minVal) / range)
-
-                    VStack(spacing: 0) {
-                        ZStack(alignment: .bottom) {
-                            // 隣との接続線
-                            if i < values.count - 1 {
-                                let nextV = values[i + 1]
-                                let nextRatio = CGFloat((nextV - minVal) / range)
-                                let y0 = dotAreaH * (1 - yRatio * 0.8 - 0.1)
-                                let y1 = dotAreaH * (1 - nextRatio * 0.8 - 0.1)
-                                Path { path in
-                                    path.move(to:    CGPoint(x: chartItemWidth / 2, y: y0))
-                                    path.addLine(to: CGPoint(x: chartItemWidth * 1.5, y: y1))
-                                }
-                                .stroke(Color.gridAccent.opacity(0.5), lineWidth: 1.5)
-                                .frame(width: chartItemWidth, height: dotAreaH)
-                                .offset(x: chartItemWidth / 2)
-                                .allowsHitTesting(false)
-                            }
-
-                            // ドット
-                            Circle()
-                                .fill(isCenter ? Color.gridAccent : Color.gridAccent.opacity(0.5))
-                                .frame(width: isCenter ? 10 : 6, height: isCenter ? 10 : 6)
-                                .offset(y: -(dotAreaH * (yRatio * 0.8 + 0.1) - (isCenter ? 5 : 3)))
+            ZStack(alignment: .topLeading) {
+                // ─── Canvas：線＋ドットを一括描画 ───
+                Canvas { ctx, size in
+                    // 線
+                    if values.count >= 2 {
+                        var linePath = Path()
+                        linePath.move(to: CGPoint(x: xPos(0), y: yPos(values[0])))
+                        for i in 1..<values.count {
+                            linePath.addLine(to: CGPoint(x: xPos(i), y: yPos(values[i])))
                         }
-                        .frame(width: chartItemWidth, height: dotAreaH)
-
-                        // 日付ラベル
-                        Text(logs[i].date.formatted(.dateTime.month().day()))
-                            .font(.system(size: 10))
-                            .foregroundColor(isCenter ? .gridAccent : .gridTextTertiary)
-                            .frame(width: chartItemWidth)
-                            .frame(height: 18)
+                        ctx.stroke(linePath, with: .color(Color.gridAccent.opacity(0.55)), lineWidth: 1.5)
                     }
-                    .frame(width: chartItemWidth, height: chartH)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            chartCenterIndex = i
+                    // ドット
+                    for (i, v) in values.enumerated() {
+                        let cx = xPos(i)
+                        let cy = yPos(v)
+                        let isCenter = i == chartCenterIndex
+                        let r: CGFloat = isCenter ? 5 : 3.5
+                        let rect = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
+                        ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridBg))
+                        ctx.fill(Path(ellipseIn: rect),
+                                 with: .color(isCenter ? Color.gridAccent : Color.gridAccent.opacity(0.55)))
+                    }
+                }
+                .frame(width: totalW, height: plotH)
+
+                // ─── タップ領域＋日付ラベル ───
+                HStack(spacing: 0) {
+                    ForEach(Array(values.enumerated()), id: \.offset) { i, _ in
+                        VStack(spacing: 0) {
+                            Color.clear
+                                .frame(width: chartItemWidth, height: plotH)
+                            Text(logs[i].date.formatted(.dateTime.month().day()))
+                                .font(.system(size: 10))
+                                .foregroundColor(i == chartCenterIndex ? .gridAccent : .gridTextTertiary)
+                                .frame(width: chartItemWidth, height: labelH)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) { chartCenterIndex = i }
                         }
                     }
                 }
+                .padding(.horizontal, chartHPad)
             }
-            .padding(.horizontal, 24)
+            .frame(width: totalW, height: chartH)
         }
         .frame(height: chartH)
-        .onAppear {
-            // 初期値を最新（末尾）に
-            chartCenterIndex = max(0, logs.count - 1)
-        }
-        .onChange(of: logs.count) { _, count in
-            chartCenterIndex = max(0, count - 1)
-        }
+        .onAppear { chartCenterIndex = max(0, logs.count - 1) }
+        .onChange(of: logs.count) { _, count in chartCenterIndex = max(0, count - 1) }
     }
 
     // MARK: - 階層3: セット詳細

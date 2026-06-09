@@ -41,7 +41,12 @@ struct WeightListView: View {
                 .padding(.top, 28)
                 .padding(.bottom, 16)
 
-                // ─── 基準ピル（選択中のみ表示）───
+                // ─── チャート ───
+                if !weightSessions.isEmpty {
+                    WeightScrollChart(sessions: weightSessions, selectedId: $referenceId)
+                }
+
+                // ─── 基準ピル（チャート直下）───
                 if let ref = referenceSession, let w = ref.bodyWeight {
                     Button {
                         onNavigate(ref)
@@ -68,8 +73,11 @@ struct WeightListView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
+                } else {
+                    Spacer().frame(height: 12)
                 }
 
                 // ─── リスト ───
@@ -87,37 +95,35 @@ struct WeightListView: View {
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
                                     .listRowInsets(EdgeInsets(top: 3, leading: 24, bottom: 3, trailing: 24))
-                                    // 最新行の可視状態を追跡
                                     .if(session.id == latestSession?.id) { view in
                                         view
                                             .onAppear  { isLatestVisible = true }
                                             .onDisappear { isLatestVisible = false }
                                     }
                             }
-                            // フロートが出る場合の余白
                             Color.clear.frame(height: isLatestVisible ? 0 : 80)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
-                        // ─── フロート最新行 ───
                         .overlay(alignment: .bottom) {
                             if !isLatestVisible, let latest = latestSession, let w = latest.bodyWeight {
                                 latestFloatBar(session: latest, weight: w) {
-                                    withAnimation {
-                                        proxy.scrollTo(latest.id, anchor: .bottom)
-                                    }
+                                    withAnimation { proxy.scrollTo(latest.id, anchor: .bottom) }
                                 }
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
                         }
                         .animation(.easeInOut(duration: 0.25), value: isLatestVisible)
                         .onAppear {
-                            // 初回表示時は最下部へスクロール
                             if let id = latestSession?.id {
                                 proxy.scrollTo(id, anchor: .bottom)
                             }
+                        }
+                        .onChange(of: referenceId) { _, id in
+                            guard let id else { return }
+                            withAnimation { proxy.scrollTo(id, anchor: .center) }
                         }
                     }
                 }
