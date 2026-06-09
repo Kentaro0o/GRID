@@ -231,7 +231,7 @@ struct LogHomeView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
 
-                if !session.entries.isEmpty {
+                if !entriesByMuscle.isEmpty {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) { isEditing.toggle() }
                     } label: {
