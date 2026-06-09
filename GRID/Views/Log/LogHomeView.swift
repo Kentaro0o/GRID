@@ -158,6 +158,11 @@ struct LogHomeView: View {
         }
         .onAppear { refreshSession() }
         .animation(.easeInOut(duration: 0.3), value: showTimeline)
+        .onChange(of: vm.logTabTappedCount) { _, _ in
+            if showTimeline {
+                withAnimation(.easeInOut(duration: 0.3)) { showTimeline = false }
+            }
+        }
     }
 
     // MARK: - ヘッダー

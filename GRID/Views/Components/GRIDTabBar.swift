@@ -5,6 +5,7 @@ enum GRIDTab {
 }
 
 struct GRIDTabBar: View {
+    @EnvironmentObject private var vm: AppViewModel
     @Binding var selected: GRIDTab
 
     var body: some View {
@@ -27,6 +28,9 @@ struct GRIDTabBar: View {
     private func tabItem(icon: String, label: String, tab: GRIDTab) -> some View {
         let isSelected = selected == tab
         return Button {
+            if tab == .log {
+                vm.logTabTappedCount += 1
+            }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 selected = tab
             }

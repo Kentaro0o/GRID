@@ -9,6 +9,8 @@ class AppViewModel: ObservableObject {
     @Published var navigateToSessionId: UUID? = nil
     /// AddItemViewなどサブ画面表示中はタブバーを隠す
     @Published var hideTabBar: Bool = false
+    /// LOGタブボタンが押されるたびにインクリメント（同タブ再タップ検知用）
+    @Published var logTabTappedCount: Int = 0
 
     private let itemsKey   = "grid_items"
     private let sessionsKey = "grid_sessions"

@@ -321,8 +321,9 @@ struct AddItemView: View {
                                     Text(fieldTyped.isEmpty ? "0" : fieldTyped)
                                         .foregroundColor(.gridAccent)
                                 } else if weight == 0 {
-                                    // 新規（値なし）フォーカス中 → 💪
-                                    Text("💪")
+                                    // 新規（値なし）フォーカス中 → ダンベル
+                                    Image(systemName: "dumbbell.fill")
+                                        .font(.system(size: 14))
                                         .foregroundColor(.gridTextTertiary)
                                 } else {
                                     Text(weightDisplayString(weight))
@@ -359,8 +360,9 @@ struct AddItemView: View {
                                     Text(fieldTyped.isEmpty ? "0" : fieldTyped)
                                         .foregroundColor(.gridAccent)
                                 } else if reps == 0 {
-                                    // 新規（値なし）フォーカス中 → 💪
-                                    Text("💪")
+                                    // 新規（値なし）フォーカス中 → ダンベル
+                                    Image(systemName: "dumbbell.fill")
+                                        .font(.system(size: 14))
                                         .foregroundColor(.gridTextTertiary)
                                 } else {
                                     Text(String(reps))
