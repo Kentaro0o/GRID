@@ -1,9 +1,8 @@
 import SwiftUI
 
 enum ExerciseDisplayMode: String, CaseIterable {
-    case volume  = "ボリューム"
+    case volume    = "ボリューム"
     case maxWeight = "Max重量"
-    case chart   = "チャート"
 }
 
 struct ExerciseStatsSection: View {
@@ -13,6 +12,7 @@ struct ExerciseStatsSection: View {
     @State private var selectedItem: Item? = nil
     @State private var selectedLog: AppViewModel.ExerciseSessionLog? = nil
     @State private var displayMode: ExerciseDisplayMode = .volume
+    @State private var chartCenterIndex: Int = 0
 
     /// 直近セッション（エントリがある最新のもの）
     private var latestSession: Session? {
@@ -237,11 +237,22 @@ struct ExerciseStatsSection: View {
     // MARK: - 階層2: 日付別リスト
 
     private func exerciseDetailView(stat: AppViewModel.ExerciseStat) -> some View {
-        let logs = vm.sessionLogs(for: stat.item)
+        let logs       = vm.sessionLogs(for: stat.item)
         let allTimeMax = stat.allTimeMax
         let recentMax  = stat.recentMonthMax
-        let bestMaxLog = logs.first { $0.maxWeight == allTimeMax }
-        let bestVolLog = logs.max { volumeOf($0) < volumeOf($1) }
+        let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+        let recentLogs  = logs.filter { $0.date >= oneMonthAgo }
+
+        let bestMaxVal   = allTimeMax
+        let recentMaxVal = recentMax
+
+        let allVols    = logs.map { volumeOf($0) }
+        let bestVolVal = allVols.max() ?? 0
+        let recentVolVal = recentLogs.map { volumeOf($0) }.max()
+
+        let bestLog = displayMode == .volume
+            ? logs.max { volumeOf($0) < volumeOf($1) }
+            : logs.first { $0.maxWeight == allTimeMax }
 
         return VStack(alignment: .leading, spacing: 0) {
             // 戻るボタン + 種目名
@@ -249,39 +260,29 @@ struct ExerciseStatsSection: View {
                 selectedItem = nil
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 14)
+            .padding(.bottom, 12)
 
-            // サマリーチップ（モードで切替）
-            if displayMode == .volume {
-                let bestVol = logs.map { volumeOf($0) }.max() ?? 0
-                HStack(spacing: 12) {
-                    statChip(label: "ベストボリューム",
-                             value: volumeText(bestVol))
-                    statChip(label: "直近1ヶ月のMax",
-                             value: recentMax.map { String(format: "%.1f kg", $0) } ?? "—")
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 12)
-            } else if displayMode == .maxWeight {
-                HStack(spacing: 12) {
-                    statChip(label: "ベストパフォーマンス",
-                             value: String(format: "%.1f kg", allTimeMax))
-                    statChip(label: "直近1ヶ月のMax",
-                             value: recentMax.map { String(format: "%.1f kg", $0) } ?? "—")
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 12)
-            }
-
-            // 表示モード セレクター
+            // ① ボリューム / Max重量 セレクター
             displayModeSelector
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
 
-            if displayMode == .chart {
-                // チャートビュー
-                exerciseChartView(logs: logs, stat: stat)
-            } else if logs.isEmpty {
+            // ② ベスト / 直近1ヶ月のベスト チップ
+            HStack(spacing: 12) {
+                if displayMode == .volume {
+                    statChip(label: "ベスト", value: volumeText(bestVolVal))
+                    statChip(label: "直近1ヶ月のベスト",
+                             value: recentVolVal.map { volumeText($0) } ?? "—")
+                } else {
+                    statChip(label: "ベスト", value: String(format: "%.1f kg", bestMaxVal))
+                    statChip(label: "直近1ヶ月のベスト",
+                             value: recentMaxVal.map { String(format: "%.1f kg", $0) } ?? "—")
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 14)
+
+            if logs.isEmpty {
                 Text("データがありません")
                     .font(.gridBody)
                     .foregroundColor(.gridTextSecondary)
@@ -289,52 +290,63 @@ struct ExerciseStatsSection: View {
                     .padding(.vertical, 32)
                     .padding(.horizontal, 24)
             } else {
-                // 日付別リスト
-                ScrollView {
-                    VStack(spacing: 2) {
-                        ForEach(logs) { log in
-                            let vol = volumeOf(log)
-                            let isBest = displayMode == .volume
-                                ? log.id == bestVolLog?.id
-                                : log.id == bestMaxLog?.id
-
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
-                            } label: {
-                                HStack(spacing: 0) {
-                                    Text(log.dateString)
-                                        .font(.gridBody)
-                                        .foregroundColor(.gridTextSecondary)
-                                        .frame(width: 72, alignment: .leading)
-
-                                    Text(displayMode == .volume
-                                         ? volumeText(vol)
-                                         : String(format: "%.1f kg", log.maxWeight))
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.gridTextPrimary)
-
-                                    Spacer()
-
-                                    if isBest {
-                                        badge(text: "Best", color: .gridAccent)
-                                    }
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.gridTextTertiary)
-                                        .padding(.leading, 10)
+                ScrollViewReader { listProxy in
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            // ③ スクロール可能チャート（常時表示）
+                            scrollableChart(logs: logs)
+                                .padding(.top, 4)
+                                .onChange(of: chartCenterIndex) { _, idx in
+                                    withAnimation { listProxy.scrollTo(logs[idx].id, anchor: .center) }
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 13)
-                                .background(isBest ? Color.gridAccent.opacity(0.10) : Color.gridCard)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                            // ④ 日付別リスト
+                            VStack(spacing: 2) {
+                                ForEach(Array(logs.enumerated()), id: \.element.id) { idx, log in
+                                    let isBest    = log.id == bestLog?.id
+                                    let isChartCenter = idx == chartCenterIndex
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
+                                    } label: {
+                                        HStack(spacing: 0) {
+                                            Text(log.dateString)
+                                                .font(.gridBody)
+                                                .foregroundColor(.gridTextSecondary)
+                                                .frame(width: 72, alignment: .leading)
+                                            Text(displayMode == .volume
+                                                 ? volumeText(volumeOf(log))
+                                                 : String(format: "%.1f kg", log.maxWeight))
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundColor(.gridTextPrimary)
+                                            Spacer()
+                                            if isChartCenter {
+                                                badge(text: "チャート", color: Color.gridAccent.opacity(0.7))
+                                            } else if isBest {
+                                                badge(text: "Best", color: .gridAccent)
+                                            }
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.gridTextTertiary)
+                                                .padding(.leading, 10)
+                                        }
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 13)
+                                        .background(
+                                            isChartCenter ? Color.gridAccent.opacity(0.07) :
+                                            isBest        ? Color.gridAccent.opacity(0.10) :
+                                                            Color.gridCard
+                                        )
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal, 24)
+                                    .id(log.id)
+                                }
+                                Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
                             }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 24)
                         }
-                        Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
                 }
             }
         }
@@ -364,91 +376,76 @@ struct ExerciseStatsSection: View {
         .clipShape(RoundedRectangle(cornerRadius: 11))
     }
 
-    // MARK: - チャート
+    // MARK: - 横スクロールチャート
 
-    private func exerciseChartView(logs: [AppViewModel.ExerciseSessionLog], stat: AppViewModel.ExerciseStat) -> some View {
-        let chartData: [(Date, Double)] = logs.map { log in
-            (log.date, displayMode == .volume ? volumeOf(log) : log.maxWeight)
-        }
-        let maxVal = chartData.map(\.1).max() ?? 1
-        let minVal = chartData.map(\.1).min() ?? 0
+    private let chartItemWidth: CGFloat = 56
+    private let chartVisibleCount: Int  = 5
+
+    private func scrollableChart(logs: [AppViewModel.ExerciseSessionLog]) -> some View {
+        let values: [Double] = logs.map { displayMode == .volume ? volumeOf($0) : $0.maxWeight }
+        let maxVal = values.max() ?? 1
+        let minVal = values.min() ?? 0
         let range  = max(maxVal - minVal, 1)
+        let chartH: CGFloat = 110
+        let dotAreaH: CGFloat = chartH - 18  // 下18ptは日付ラベル
 
-        return ScrollView {
-            VStack(spacing: 16) {
-                // ラインチャート
-                GeometryReader { geo in
-                    Canvas { ctx, size in
-                        guard chartData.count >= 2 else { return }
-                        let pts = chartData.enumerated().map { i, pt -> CGPoint in
-                            let x = size.width * CGFloat(i) / CGFloat(chartData.count - 1)
-                            let y = size.height - size.height * CGFloat((pt.1 - minVal) / range) * 0.8 - size.height * 0.1
-                            return CGPoint(x: x, y: y)
-                        }
-                        var path = Path()
-                        path.move(to: pts[0])
-                        for pt in pts.dropFirst() { path.addLine(to: pt) }
-                        ctx.stroke(path, with: .color(Color.gridAccent.opacity(0.7)), lineWidth: 2)
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(Array(values.enumerated()), id: \.offset) { i, v in
+                    let isCenter = i == chartCenterIndex
+                    let yRatio   = CGFloat((v - minVal) / range)
 
-                        for (i, pt) in pts.enumerated() {
-                            let r: CGFloat = 4
-                            let rect = CGRect(x: pt.x - r, y: pt.y - r, width: r*2, height: r*2)
-                            ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridBg))
-                            ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridAccent))
-
-                            // 日付ラベル（間引き）
-                            if chartData.count <= 6 || i % max(1, chartData.count / 5) == 0 {
-                                var text = AttributedString(chartData[i].0.formatted(.dateTime.month().day()))
-                                text.font = .system(size: 10)
-                                text.foregroundColor = Color.gridTextTertiary
-                                ctx.draw(Text(chartData[i].0.formatted(.dateTime.month().day()))
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.gridTextTertiary),
-                                    at: CGPoint(x: pt.x, y: size.height - 4),
-                                    anchor: .bottom)
+                    VStack(spacing: 0) {
+                        ZStack(alignment: .bottom) {
+                            // 隣との接続線
+                            if i < values.count - 1 {
+                                let nextV = values[i + 1]
+                                let nextRatio = CGFloat((nextV - minVal) / range)
+                                let y0 = dotAreaH * (1 - yRatio * 0.8 - 0.1)
+                                let y1 = dotAreaH * (1 - nextRatio * 0.8 - 0.1)
+                                Path { path in
+                                    path.move(to:    CGPoint(x: chartItemWidth / 2, y: y0))
+                                    path.addLine(to: CGPoint(x: chartItemWidth * 1.5, y: y1))
+                                }
+                                .stroke(Color.gridAccent.opacity(0.5), lineWidth: 1.5)
+                                .frame(width: chartItemWidth, height: dotAreaH)
+                                .offset(x: chartItemWidth / 2)
+                                .allowsHitTesting(false)
                             }
+
+                            // ドット
+                            Circle()
+                                .fill(isCenter ? Color.gridAccent : Color.gridAccent.opacity(0.5))
+                                .frame(width: isCenter ? 10 : 6, height: isCenter ? 10 : 6)
+                                .offset(y: -(dotAreaH * (yRatio * 0.8 + 0.1) - (isCenter ? 5 : 3)))
+                        }
+                        .frame(width: chartItemWidth, height: dotAreaH)
+
+                        // 日付ラベル
+                        Text(logs[i].date.formatted(.dateTime.month().day()))
+                            .font(.system(size: 10))
+                            .foregroundColor(isCenter ? .gridAccent : .gridTextTertiary)
+                            .frame(width: chartItemWidth)
+                            .frame(height: 18)
+                    }
+                    .frame(width: chartItemWidth, height: chartH)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            chartCenterIndex = i
                         }
                     }
                 }
-                .frame(height: 160)
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-
-                // 日付別リスト（チャート下にも表示）
-                VStack(spacing: 2) {
-                    ForEach(logs) { log in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
-                        } label: {
-                            HStack(spacing: 0) {
-                                Text(log.dateString)
-                                    .font(.gridBody)
-                                    .foregroundColor(.gridTextSecondary)
-                                    .frame(width: 72, alignment: .leading)
-                                Text(volumeText(volumeOf(log)))
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundColor(.gridTextPrimary)
-                                Spacer()
-                                Text(String(format: "%.1f kg", log.maxWeight))
-                                    .font(.gridCaption)
-                                    .foregroundColor(.gridTextTertiary)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.gridTextTertiary)
-                                    .padding(.leading, 8)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(Color.gridCard)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 24)
-                    }
-                    Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
-                }
-                .padding(.top, 4)
             }
+            .padding(.horizontal, 24)
+        }
+        .frame(height: chartH)
+        .onAppear {
+            // 初期値を最新（末尾）に
+            chartCenterIndex = max(0, logs.count - 1)
+        }
+        .onChange(of: logs.count) { _, count in
+            chartCenterIndex = max(0, count - 1)
         }
     }
 
@@ -456,10 +453,29 @@ struct ExerciseStatsSection: View {
 
     private func setDetailView(log: AppViewModel.ExerciseSessionLog, itemName: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 戻るボタン + 日付 or 種目名（最新モードでは種目名）
-            backButton(title: showLatest ? itemName : log.dateString) {
-                selectedLog  = nil
-                if showLatest { selectedItem = nil }
+            // 戻るボタン + 日付 / このセッションへ
+            HStack {
+                backButton(title: showLatest ? itemName : log.dateString) {
+                    selectedLog  = nil
+                    if showLatest { selectedItem = nil }
+                }
+                Spacer()
+                Button {
+                    vm.navigateToSessionId = log.id
+                } label: {
+                    HStack(spacing: 5) {
+                        Text("このセッションへ")
+                            .font(.gridCaption)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(.gridAccent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.gridAccent.opacity(0.12))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 16)
@@ -538,28 +554,6 @@ struct ExerciseStatsSection: View {
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
-                    // このセッションへボタン
-                    Button {
-                        vm.navigateToSessionId = log.id
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .font(.system(size: 15))
-                            Text("このセッションへ")
-                                .font(.system(size: 15, weight: .semibold))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .opacity(0.7)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
-                        .background(Color.gridAccent)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-                    .buttonStyle(.plain)
-
                     Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
                 }
                 .padding(.horizontal, 24)
@@ -614,11 +608,9 @@ struct ExerciseStatsSection: View {
         log.sets.reduce(0) { $0 + $1.weight * Double($1.reps) }
     }
 
-    /// ボリュームの表示文字列
+    /// ボリュームの表示文字列（常にkg）
     private func volumeText(_ vol: Double) -> String {
-        vol >= 1000
-            ? String(format: "%.1f t", vol / 1000)
-            : String(format: "%.0f kg", vol)
+        String(format: "%.0f kg", vol)
     }
 
     private func weightText(_ w: Double) -> String {
