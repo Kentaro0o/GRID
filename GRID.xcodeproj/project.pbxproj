@@ -10,6 +10,7 @@
 		080745117FB0E76EC0650FE9 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC595BAE93DA8F65CC0F0C4 /* AppViewModel.swift */; };
 		083DF7F18611C5EF4023D1CE /* NewItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B527F1DD066D179839F3722F /* NewItemView.swift */; };
 		14D248EB9923D13B6955401B /* CSVExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB553F479F21987390EF421 /* CSVExporter.swift */; };
+		1507BAFE6CA146A28560D753 /* LogHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8824F72A23420C8CD79423 /* LogHomeView.swift */; };
 		1536622C41CBDBD3DE849803 /* AddMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D4CF87F750C5513D79CABD3 /* AddMenuView.swift */; };
 		26527940179FE4C9C703A5D9 /* ViewItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5066B8042A69784B9490E02E /* ViewItemView.swift */; };
 		26BEA0BCB834FADA2EA7FA57 /* GRIDTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */; };
@@ -25,7 +26,6 @@
 		7F3A36A4B66612F4E1E79845 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 24929EE7E57DA81A00BED4A0 /* Assets.xcassets */; };
 		859265698882E411297BB412 /* AddItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434F85E6D056F07CCFDB571B /* AddItemView.swift */; };
 		958872960D57D5C520D587EC /* LogTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECCD2570E5A78031CDA5457 /* LogTabView.swift */; };
-		1507BAFE6CA146A28560D753 /* LogHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8824F72A23420C8CD79423 /* LogHomeView.swift */; };
 		9D54A8C60F38293BAE1405DD /* SystemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECC8A5850629A6793508FB6 /* SystemView.swift */; };
 		A2F328D4D441C0CB2FDFE5F7 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C155F24F7097B09754F121 /* CameraView.swift */; };
 		B81A677B02AD5D301636FF8E /* GRIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C9F6AE8DE1277F0F7A624C /* GRIDApp.swift */; };
@@ -56,6 +56,7 @@
 		58C155F24F7097B09754F121 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		5D4CF87F750C5513D79CABD3 /* AddMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMenuView.swift; sourceTree = "<group>"; };
 		5DABC065D2229BDD38BD3F67 /* PhotoGridSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGridSection.swift; sourceTree = "<group>"; };
+		7D8824F72A23420C8CD79423 /* LogHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogHomeView.swift; sourceTree = "<group>"; };
 		964A622D3B1B01E19CA05498 /* GRIDTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GRIDTabBar.swift; sourceTree = "<group>"; };
 		9D3D6971D3910006264544D7 /* WorkoutSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSet.swift; sourceTree = "<group>"; };
 		9ECC8A5850629A6793508FB6 /* SystemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemView.swift; sourceTree = "<group>"; };
@@ -69,7 +70,6 @@
 		E917C1DE66E82E122411B42D /* GRID.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GRID.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEB553F479F21987390EF421 /* CSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVExporter.swift; sourceTree = "<group>"; };
 		EECCD2570E5A78031CDA5457 /* LogTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogTabView.swift; sourceTree = "<group>"; };
-		7D8824F72A23420C8CD79423 /* LogHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogHomeView.swift; sourceTree = "<group>"; };
 		F9C7CD78E00BFF41D2A9969D /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
 		FDA54202C3780D3F9FEDEBE7 /* WeightListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -245,7 +245,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2650;
 			};
 			buildConfigurationList = 17E1F3EB9CBBD08FB639D390 /* Build configuration list for PBXProject "GRID" */;
 			developmentRegion = ja;
@@ -324,7 +324,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = D893CFMSX9;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GRID/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -342,6 +341,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -373,9 +373,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = D893CFMSX9;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -389,6 +391,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -399,6 +402,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -430,9 +434,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = D893CFMSX9;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -453,6 +459,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -466,7 +473,6 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = D893CFMSX9;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GRID/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

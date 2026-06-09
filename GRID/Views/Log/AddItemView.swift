@@ -18,6 +18,7 @@ struct AddItemView: View {
     @State private var timerHasTyped = false          // 一度でも入力したか
     @State private var timerEndDate: Date? = nil   // バックグラウンド対応用
     @State private var showEditItem = false
+    @State private var keyboardHeight: CGFloat = 0
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focusedField: Field?
 
@@ -38,7 +39,7 @@ struct AddItemView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.gridBgPurple.ignoresSafeArea()
+            Color.gridBgPurple.ignoresSafeArea(.all)
 
             VStack(spacing: 0) {
                 // Header
@@ -163,46 +164,23 @@ struct AddItemView: View {
 
                 Spacer().frame(height: 160)
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            // タイマーパネル：キーボードが出ると自動で押し上げられる
-            VStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isEditingTimer.toggle()
-                            if !isEditingTimer {
-                                focusedField  = nil
-                                remainingSeconds = totalSeconds
-                                timerTyped    = ""
-                                timerHasTyped = false
-                            }
-                        }
-                    } label: {
-                        Image(systemName: isEditingTimer ? "checkmark.circle.fill" : "slider.horizontal.3")
-                            .font(.system(size: 20))
-                            .foregroundColor(isEditingTimer ? .gridAccent : .gridTextSecondary)
-                            .frame(width: 36, height: 36)
-                            .clipShape(Circle())
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 10)
-                .padding(.bottom, 4)
 
-                timerPanel
-            }
-            .background(Color.gridBgPurple)
+            // タイマーパネル：編集時のみキーボード分だけ上にオフセット
+            timerContainerView
+                .offset(y: isEditingTimer ? -(keyboardHeight - 48) : 0)
+                .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
         }
+        .ignoresSafeArea(.keyboard)
         .scrollDismissesKeyboard(.interactively)
         .onAppear {
+            vm.hideTabBar = true
             if let item = entry.flatMap({ vm.item(for: $0.itemId) }) {
                 totalSeconds = item.restTimerSeconds
                 remainingSeconds = item.restTimerSeconds
             }
         }
         .onDisappear {
+            vm.hideTabBar = false
             timer?.invalidate()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -228,6 +206,14 @@ struct AddItemView: View {
                     .foregroundColor(.gridAccent)
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notif in
+            if let frame = notif.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                keyboardHeight = frame.height
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showEditItem) {
@@ -328,6 +314,37 @@ struct AddItemView: View {
     }
 
     // MARK: - Timer panel
+
+    private var timerContainerView: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isEditingTimer.toggle()
+                        if !isEditingTimer {
+                            focusedField  = nil
+                            remainingSeconds = totalSeconds
+                            timerTyped    = ""
+                            timerHasTyped = false
+                        }
+                    }
+                } label: {
+                    Image(systemName: isEditingTimer ? "checkmark.circle.fill" : "slider.horizontal.3")
+                        .font(.system(size: 20))
+                        .foregroundColor(isEditingTimer ? .gridAccent : .gridTextSecondary)
+                        .frame(width: 36, height: 36)
+                        .clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 2)
+
+            timerPanel
+        }
+        .background(Color.gridBgPurple)
+    }
 
     private var timerPanel: some View {
         VStack(spacing: 0) {

@@ -7,6 +7,8 @@ class AppViewModel: ObservableObject {
 
     /// DATAタブなどから LOG タブの特定セッションへジャンプするためのリクエスト
     @Published var navigateToSessionId: UUID? = nil
+    /// AddItemViewなどサブ画面表示中はタブバーを隠す
+    @Published var hideTabBar: Bool = false
 
     private let itemsKey   = "grid_items"
     private let sessionsKey = "grid_sessions"

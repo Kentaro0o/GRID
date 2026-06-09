@@ -19,7 +19,9 @@ struct MainTabView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
-            GRIDTabBar(selected: $selectedTab)
+            if !vm.hideTabBar {
+                GRIDTabBar(selected: $selectedTab)
+            }
         }
         .ignoresSafeArea(edges: .bottom)
         .environmentObject(vm)
