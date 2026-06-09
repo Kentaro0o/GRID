@@ -40,7 +40,8 @@ struct ExerciseStatsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // ─── フィルターチップ（最新 + 筋肉グループ）───
+            // ─── フィルターチップ（種目未選択時のみ表示）───
+            if selectedItem == nil {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     // 最新チップ
@@ -96,6 +97,7 @@ struct ExerciseStatsSection: View {
                 .padding(.horizontal, 24)
             }
             .padding(.bottom, 12)
+            } // end if selectedItem == nil
 
             if showLatest {
                 // ─── 最新セッション ───
@@ -255,7 +257,7 @@ struct ExerciseStatsSection: View {
             : logs.first { $0.maxWeight == allTimeMax }
 
         return VStack(alignment: .leading, spacing: 0) {
-            // 戻るボタン + 種目名
+            // ヘッダー：戻るボタン（チップの代わりに上部表示）
             backButton(title: stat.item.name) {
                 selectedItem = nil
             }
@@ -280,7 +282,7 @@ struct ExerciseStatsSection: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 14)
+            .padding(.bottom, 8)
 
             if logs.isEmpty {
                 Text("データがありません")
@@ -290,62 +292,61 @@ struct ExerciseStatsSection: View {
                     .padding(.vertical, 32)
                     .padding(.horizontal, 24)
             } else {
+                // ③ チャート固定（ScrollView外）
+                scrollableChart(logs: logs)
+                    .padding(.bottom, 8)
+
+                // ④ 日付リストのみスクロール
                 ScrollViewReader { listProxy in
                     ScrollView {
-                        VStack(spacing: 16) {
-                            // ③ スクロール可能チャート（常時表示）
-                            scrollableChart(logs: logs)
-                                .padding(.top, 4)
-                                .onChange(of: chartCenterIndex) { _, idx in
-                                    withAnimation { listProxy.scrollTo(logs[idx].id, anchor: .center) }
-                                }
-
-                            // ④ 日付別リスト
-                            VStack(spacing: 2) {
-                                ForEach(Array(logs.enumerated()), id: \.element.id) { idx, log in
-                                    let isBest    = log.id == bestLog?.id
-                                    let isChartCenter = idx == chartCenterIndex
-                                    Button {
-                                        withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
-                                    } label: {
-                                        HStack(spacing: 0) {
-                                            Text(log.dateString)
-                                                .font(.gridBody)
-                                                .foregroundColor(.gridTextSecondary)
-                                                .frame(width: 72, alignment: .leading)
-                                            Text(displayMode == .volume
-                                                 ? volumeText(volumeOf(log))
-                                                 : String(format: "%.1f kg", log.maxWeight))
-                                                .font(.system(size: 16, weight: .semibold))
-                                                .foregroundColor(.gridTextPrimary)
-                                            Spacer()
-                                            if isChartCenter {
-                                                badge(text: "チャート", color: Color(red: 0.4, green: 0.8, blue: 1.0))
-                                            } else if isBest {
-                                                badge(text: "Best", color: .gridAccent)
-                                            }
-                                            Image(systemName: "chevron.right")
-                                                .font(.system(size: 12))
-                                                .foregroundColor(.gridTextTertiary)
-                                                .padding(.leading, 10)
+                        VStack(spacing: 2) {
+                            ForEach(Array(logs.enumerated()), id: \.element.id) { idx, log in
+                                let isBest        = log.id == bestLog?.id
+                                let isChartCenter = idx == chartCenterIndex
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) { selectedLog = log }
+                                } label: {
+                                    HStack(spacing: 0) {
+                                        Text(log.dateString)
+                                            .font(.gridBody)
+                                            .foregroundColor(.gridTextSecondary)
+                                            .frame(width: 72, alignment: .leading)
+                                        Text(displayMode == .volume
+                                             ? volumeText(volumeOf(log))
+                                             : String(format: "%.1f kg", log.maxWeight))
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.gridTextPrimary)
+                                        Spacer()
+                                        if isChartCenter {
+                                            badge(text: "チャート", color: Color(red: 0.4, green: 0.8, blue: 1.0))
+                                        } else if isBest {
+                                            badge(text: "Best", color: .gridAccent)
                                         }
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 13)
-                                        .background(
-                                            isChartCenter ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.15) :
-                                            isBest        ? Color.gridAccent.opacity(0.10) :
-                                                            Color.gridCard
-                                        )
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.gridTextTertiary)
+                                            .padding(.leading, 10)
                                     }
-                                    .buttonStyle(.plain)
-                                    .padding(.horizontal, 24)
-                                    .id(log.id)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 13)
+                                    .background(
+                                        isChartCenter ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.15) :
+                                        isBest        ? Color.gridAccent.opacity(0.10) :
+                                                        Color.gridCard
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
                                 }
-                                Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 24)
+                                .id(log.id)
                             }
+                            Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
                         }
                         .padding(.top, 4)
+                    }
+                    .onChange(of: chartCenterIndex) { _, idx in
+                        guard idx < logs.count else { return }
+                        withAnimation { listProxy.scrollTo(logs[idx].id, anchor: .center) }
                     }
                 }
             }
@@ -399,57 +400,65 @@ struct ExerciseStatsSection: View {
             plotH * (1 - CGFloat((v - minVal) / range) * 0.8 - 0.1)
         }
 
-        return ScrollView(.horizontal, showsIndicators: false) {
-            ZStack(alignment: .topLeading) {
-                // ─── Canvas：線＋ドットを一括描画 ───
-                Canvas { ctx, size in
-                    // 線
-                    if values.count >= 2 {
-                        var linePath = Path()
-                        linePath.move(to: CGPoint(x: xPos(0), y: yPos(values[0])))
-                        for i in 1..<values.count {
-                            linePath.addLine(to: CGPoint(x: xPos(i), y: yPos(values[i])))
+        return ScrollViewReader { chartProxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                ZStack(alignment: .topLeading) {
+                    // ─── Canvas：線＋ドットを一括描画 ───
+                    Canvas { ctx, size in
+                        if values.count >= 2 {
+                            var linePath = Path()
+                            linePath.move(to: CGPoint(x: xPos(0), y: yPos(values[0])))
+                            for i in 1..<values.count {
+                                linePath.addLine(to: CGPoint(x: xPos(i), y: yPos(values[i])))
+                            }
+                            ctx.stroke(linePath, with: .color(Color.gridAccent.opacity(0.55)), lineWidth: 1.5)
                         }
-                        ctx.stroke(linePath, with: .color(Color.gridAccent.opacity(0.55)), lineWidth: 1.5)
+                        for (i, v) in values.enumerated() {
+                            let cx = xPos(i), cy = yPos(v)
+                            let isCenter = i == chartCenterIndex
+                            let r: CGFloat = isCenter ? 5 : 3.5
+                            let rect = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
+                            ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridBg))
+                            ctx.fill(Path(ellipseIn: rect),
+                                     with: .color(isCenter ? Color.gridAccent : Color.gridAccent.opacity(0.55)))
+                        }
                     }
-                    // ドット
-                    for (i, v) in values.enumerated() {
-                        let cx = xPos(i)
-                        let cy = yPos(v)
-                        let isCenter = i == chartCenterIndex
-                        let r: CGFloat = isCenter ? 5 : 3.5
-                        let rect = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
-                        ctx.fill(Path(ellipseIn: rect), with: .color(Color.gridBg))
-                        ctx.fill(Path(ellipseIn: rect),
-                                 with: .color(isCenter ? Color.gridAccent : Color.gridAccent.opacity(0.55)))
-                    }
-                }
-                .frame(width: totalW, height: plotH)
+                    .frame(width: totalW, height: plotH)
 
-                // ─── タップ領域＋日付ラベル ───
-                HStack(spacing: 0) {
-                    ForEach(Array(values.enumerated()), id: \.offset) { i, _ in
-                        VStack(spacing: 0) {
-                            Color.clear
-                                .frame(width: chartItemWidth, height: plotH)
-                            Text(logs[i].date.formatted(.dateTime.month().day()))
-                                .font(.system(size: 10))
-                                .foregroundColor(i == chartCenterIndex ? .gridAccent : .gridTextTertiary)
-                                .frame(width: chartItemWidth, height: labelH)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.2)) { chartCenterIndex = i }
+                    // ─── タップ領域＋日付ラベル ───
+                    HStack(spacing: 0) {
+                        ForEach(Array(values.enumerated()), id: \.offset) { i, _ in
+                            VStack(spacing: 0) {
+                                Color.clear
+                                    .frame(width: chartItemWidth, height: plotH)
+                                Text(logs[i].date.formatted(.dateTime.month().day()))
+                                    .font(.system(size: 10))
+                                    .foregroundColor(i == chartCenterIndex ? .gridAccent : .gridTextTertiary)
+                                    .frame(width: chartItemWidth, height: labelH)
+                            }
+                            .id(i)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) { chartCenterIndex = i }
+                            }
                         }
                     }
+                    .padding(.horizontal, chartHPad)
                 }
-                .padding(.horizontal, chartHPad)
+                .frame(width: totalW, height: chartH)
             }
-            .frame(width: totalW, height: chartH)
+            .frame(height: chartH)
+            .onAppear {
+                chartCenterIndex = max(0, logs.count - 1)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    withAnimation { chartProxy.scrollTo(chartCenterIndex, anchor: .center) }
+                }
+            }
+            .onChange(of: chartCenterIndex) { _, idx in
+                withAnimation { chartProxy.scrollTo(idx, anchor: .center) }
+            }
+            .onChange(of: logs.count) { _, count in chartCenterIndex = max(0, count - 1) }
         }
-        .frame(height: chartH)
-        .onAppear { chartCenterIndex = max(0, logs.count - 1) }
-        .onChange(of: logs.count) { _, count in chartCenterIndex = max(0, count - 1) }
     }
 
     // MARK: - 階層3: セット詳細
