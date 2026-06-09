@@ -156,12 +156,27 @@ struct LogHomeView: View {
                 .zIndex(1)
             }
         }
-        .onAppear { refreshSession() }
+        .onAppear {
+            refreshSession()
+            // 他タブからジャンプ：LogHomeが表示される前にセット済みの場合
+            if let sessionId = vm.navigateToSessionId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    openTimeline(targetSessionId: sessionId)
+                    vm.navigateToSessionId = nil
+                }
+            }
+        }
         .animation(.easeInOut(duration: 0.3), value: showTimeline)
         .onChange(of: vm.logTabTappedCount) { _, _ in
             if showTimeline {
                 withAnimation(.easeInOut(duration: 0.3)) { showTimeline = false }
             }
+        }
+        .onChange(of: vm.navigateToSessionId) { _, sessionId in
+            // LogHomeが既に表示されている間に値がセットされた場合
+            guard let sessionId else { return }
+            openTimeline(targetSessionId: sessionId)
+            vm.navigateToSessionId = nil
         }
     }
 

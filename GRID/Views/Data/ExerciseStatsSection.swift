@@ -265,6 +265,28 @@ struct ExerciseStatsSection: View {
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
+                    // このセッションへボタン
+                    Button {
+                        vm.navigateToSessionId = log.id
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.system(size: 15))
+                            Text("このセッションへ")
+                                .font(.system(size: 15, weight: .semibold))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .opacity(0.7)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                        .background(Color.gridAccent)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+
                     Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
                 }
                 .padding(.horizontal, 24)
