@@ -47,6 +47,10 @@ struct AddItemView: View {
         entry.flatMap { vm.item(for: $0.itemId) }?.name ?? ""
     }
 
+    private var isBodyweight: Bool {
+        entry.flatMap { vm.item(for: $0.itemId) }?.type == .bodyweight
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.gridBgPurple.ignoresSafeArea(.all)
@@ -304,45 +308,46 @@ struct AddItemView: View {
                     .foregroundColor(.gridTextSecondary)
                     .frame(width: 20)
 
-                // ─── Weight ───
-                HStack(spacing: 4) {
-                    ZStack {
-                        // hidden TextField（キーボード入力受け取り）
-                        TextField("", text: $fieldTyped)
-                            .keyboardType(.decimalPad)
-                            .frame(width: 1, height: 1)
-                            .opacity(0.01)
-                            .focused($focusedField, equals: .weight(setIdx))
+                // ─── Weight（自重は非表示）───
+                if !isBodyweight {
+                    HStack(spacing: 4) {
+                        ZStack {
+                            // hidden TextField（キーボード入力受け取り）
+                            TextField("", text: $fieldTyped)
+                                .keyboardType(.decimalPad)
+                                .frame(width: 1, height: 1)
+                                .opacity(0.01)
+                                .focused($focusedField, equals: .weight(setIdx))
 
-                        // 色分け表示
-                        Group {
-                            if weightFocused {
-                                if fieldHasTyped {
-                                    Text(fieldTyped.isEmpty ? "0" : fieldTyped)
-                                        .foregroundColor(.gridAccent)
-                                } else if weight == 0 {
-                                    // 新規（値なし）フォーカス中 → ダンベル
-                                    Image(systemName: "dumbbell.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.gridTextTertiary)
+                            // 色分け表示
+                            Group {
+                                if weightFocused {
+                                    if fieldHasTyped {
+                                        Text(fieldTyped.isEmpty ? "0" : fieldTyped)
+                                            .foregroundColor(.gridAccent)
+                                    } else if weight == 0 {
+                                        Image(systemName: "dumbbell.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.gridTextTertiary)
+                                    } else {
+                                        Text(weightDisplayString(weight))
+                                            .foregroundColor(.gridTextTertiary)
+                                    }
                                 } else {
-                                    Text(weightDisplayString(weight))
-                                        .foregroundColor(.gridTextTertiary)
+                                    Text(weight == 0 ? "－" : weightDisplayString(weight))
+                                        .foregroundColor(weight == 0 ? .gridTextTertiary : .gridTextPrimary)
                                 }
-                            } else {
-                                Text(weight == 0 ? "－" : weightDisplayString(weight))
-                                    .foregroundColor(weight == 0 ? .gridTextTertiary : .gridTextPrimary)
                             }
+                            .font(.gridBody)
+                            .frame(width: 56)
+                            .multilineTextAlignment(.center)
+                            .contentShape(Rectangle())
+                            .onTapGesture { focusedField = .weight(setIdx) }
                         }
-                        .font(.gridBody)
-                        .frame(width: 56)
-                        .multilineTextAlignment(.center)
-                        .contentShape(Rectangle())
-                        .onTapGesture { focusedField = .weight(setIdx) }
+                        Text("Kg")
+                            .font(.gridCaption)
+                            .foregroundColor(.gridTextSecondary)
                     }
-                    Text("Kg")
-                        .font(.gridCaption)
-                        .foregroundColor(.gridTextSecondary)
                 }
 
                 // ─── Reps ───

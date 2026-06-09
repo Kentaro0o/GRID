@@ -240,24 +240,37 @@ struct ExerciseStatsSection: View {
 
     private func exerciseDetailView(stat: AppViewModel.ExerciseStat) -> some View {
         let logs        = vm.sessionLogs(for: stat.item)
+        let isBodyweight = stat.item.type == .bodyweight
         let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
         let recentLogs  = logs.filter { $0.date >= oneMonthAgo }
 
-        // ベスト & 直近ベストのログを両モードで取得
-        let bestLog: AppViewModel.ExerciseSessionLog? = displayMode == .volume
-            ? logs.max { volumeOf($0) < volumeOf($1) }
-            : logs.first { $0.maxWeight == stat.allTimeMax }
+        // 自重：最大回数で比較
+        let bestMaxReps   = logs.map { $0.sets.map(\.reps).max() ?? 0 }.max() ?? 0
+        let recentMaxReps = recentLogs.map { $0.sets.map(\.reps).max() ?? 0 }.max()
 
-        let recentBestLog: AppViewModel.ExerciseSessionLog? = displayMode == .volume
-            ? recentLogs.max { volumeOf($0) < volumeOf($1) }
-            : recentLogs.max { $0.maxWeight < $1.maxWeight }
+        // ベスト & 直近ベストのログを両モードで取得
+        let bestLog: AppViewModel.ExerciseSessionLog? = isBodyweight
+            ? logs.max { ($0.sets.map(\.reps).max() ?? 0) < ($1.sets.map(\.reps).max() ?? 0) }
+            : displayMode == .volume
+                ? logs.max { volumeOf($0) < volumeOf($1) }
+                : logs.first { $0.maxWeight == stat.allTimeMax }
+
+        let recentBestLog: AppViewModel.ExerciseSessionLog? = isBodyweight
+            ? recentLogs.max { ($0.sets.map(\.reps).max() ?? 0) < ($1.sets.map(\.reps).max() ?? 0) }
+            : displayMode == .volume
+                ? recentLogs.max { volumeOf($0) < volumeOf($1) }
+                : recentLogs.max { $0.maxWeight < $1.maxWeight }
 
         // 表示値
-        let bestVal     = displayMode == .volume ? volumeText(logs.map { volumeOf($0) }.max() ?? 0)
-                                                 : String(format: "%.1f kg", stat.allTimeMax)
-        let recentVal   = displayMode == .volume
-            ? recentLogs.map { volumeOf($0) }.max().map { volumeText($0) } ?? "—"
-            : stat.recentMonthMax.map { String(format: "%.1f kg", $0) } ?? "—"
+        let bestVal: String = isBodyweight
+            ? "\(bestMaxReps) 回"
+            : displayMode == .volume ? volumeText(logs.map { volumeOf($0) }.max() ?? 0)
+                                     : String(format: "%.1f kg", stat.allTimeMax)
+        let recentVal: String = isBodyweight
+            ? recentMaxReps.map { "\($0) 回" } ?? "—"
+            : displayMode == .volume
+                ? recentLogs.map { volumeOf($0) }.max().map { volumeText($0) } ?? "—"
+                : stat.recentMonthMax.map { String(format: "%.1f kg", $0) } ?? "—"
 
         // チャートジャンプ用ヘルパー
         func jumpChart(to log: AppViewModel.ExerciseSessionLog?) {
@@ -271,10 +284,12 @@ struct ExerciseStatsSection: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
 
-            // ① ボリューム / Max重量 セレクター
-            displayModeSelector
-                .padding(.horizontal, 24)
-                .padding(.bottom, 12)
+            // ① ボリューム / Max重量 セレクター（自重は非表示）
+            if !isBodyweight {
+                displayModeSelector
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 12)
+            }
 
             if logs.isEmpty {
                 Text("データがありません")
@@ -337,9 +352,11 @@ struct ExerciseStatsSection: View {
                                                 .font(.gridBody)
                                                 .foregroundColor(.gridTextSecondary)
                                                 .frame(width: 72, alignment: .leading)
-                                            Text(displayMode == .volume
-                                                 ? volumeText(volumeOf(log))
-                                                 : String(format: "%.1f kg", log.maxWeight))
+                                            Text(isBodyweight
+                                                 ? "\(log.sets.map(\.reps).max() ?? 0) 回"
+                                                 : displayMode == .volume
+                                                     ? volumeText(volumeOf(log))
+                                                     : String(format: "%.1f kg", log.maxWeight))
                                                 .font(.system(size: 16, weight: .semibold))
                                                 .foregroundColor(.gridTextPrimary)
                                             Spacer()
@@ -445,7 +462,10 @@ struct ExerciseStatsSection: View {
     private let chartHPad: CGFloat = 24
 
     private func scrollableChart(logs: [AppViewModel.ExerciseSessionLog]) -> some View {
-        let values: [Double] = logs.map { displayMode == .volume ? volumeOf($0) : $0.maxWeight }
+        let isBodyweight = selectedItem?.type == .bodyweight
+        let values: [Double] = isBodyweight
+            ? logs.map { Double($0.sets.map(\.reps).max() ?? 0) }
+            : logs.map { displayMode == .volume ? volumeOf($0) : $0.maxWeight }
         let maxVal = (values.max() ?? 1)
         let minVal = (values.min() ?? 0)
         let range  = max(maxVal - minVal, 1)
@@ -605,10 +625,15 @@ struct ExerciseStatsSection: View {
                     .background(Color.gridCard)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
 
-                    // ボリューム & Max重量 サマリー
+                    // サマリー（自重は回数のみ）
                     HStack(spacing: 12) {
-                        statChip(label: "ボリューム", value: volumeText(volumeOf(log)))
-                        statChip(label: "Max重量", value: String(format: "%.1f kg", log.maxWeight))
+                        if selectedItem?.type == .bodyweight {
+                            statChip(label: "最大回数", value: "\(log.sets.map(\.reps).max() ?? 0) 回")
+                            statChip(label: "セット数", value: "\(log.sets.count) セット")
+                        } else {
+                            statChip(label: "ボリューム", value: volumeText(volumeOf(log)))
+                            statChip(label: "Max重量", value: String(format: "%.1f kg", log.maxWeight))
+                        }
                     }
 
                     // メモ（あれば）
