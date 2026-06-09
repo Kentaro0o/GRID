@@ -2,18 +2,69 @@ import SwiftUI
 
 struct ExerciseStatsSection: View {
     @EnvironmentObject var vm: AppViewModel
+    @State private var showLatest: Bool = true
     @State private var selectedGroup: MuscleGroup = .chest
     @State private var selectedItem: Item? = nil
     @State private var selectedLog: AppViewModel.ExerciseSessionLog? = nil
 
+    /// 直近セッション（エントリがある最新のもの）
+    private var latestSession: Session? {
+        vm.sessions.sorted { $0.date > $1.date }.first { !$0.entries.isEmpty }
+    }
+
+    /// 直近セッションのエントリを ExerciseSessionLog 形式に変換
+    private var latestLogs: [(log: AppViewModel.ExerciseSessionLog, item: Item)] {
+        guard let session = latestSession else { return [] }
+        return session.entries.compactMap { entry in
+            guard let item = vm.item(for: entry.itemId) else { return nil }
+            let validSets = entry.sets.filter { $0.reps > 0 }
+            guard !validSets.isEmpty, let maxW = validSets.map(\.weight).max() else { return nil }
+            let log = AppViewModel.ExerciseSessionLog(
+                id: session.id,
+                date: session.date,
+                dateString: session.dateString,
+                maxWeight: maxW,
+                sets: validSets,
+                memo: entry.memo
+            )
+            return (log, item)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // ─── 筋肉グループ チップ ───
+            // ─── フィルターチップ（最新 + 筋肉グループ）───
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
+                    // 最新チップ
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showLatest = true
+                            selectedItem = nil
+                            selectedLog  = nil
+                        }
+                    } label: {
+                        Text("最新")
+                            .font(.gridBody)
+                            .foregroundColor(showLatest ? .white : .gridTextSecondary)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 8)
+                            .background(showLatest ? Color.gridAccent : Color.clear)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule().stroke(
+                                    showLatest ? Color.clear : Color.gridTextSecondary.opacity(0.3),
+                                    lineWidth: 1
+                                )
+                            )
+                    }
+
+                    // 筋肉グループチップ
                     ForEach(MuscleGroup.allCases) { group in
+                        let isSelected = !showLatest && selectedGroup == group
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
+                                showLatest    = false
                                 selectedGroup = group
                                 selectedItem  = nil
                                 selectedLog   = nil
@@ -21,14 +72,14 @@ struct ExerciseStatsSection: View {
                         } label: {
                             Text(group.rawValue)
                                 .font(.gridBody)
-                                .foregroundColor(selectedGroup == group ? .white : .gridTextSecondary)
+                                .foregroundColor(isSelected ? .white : .gridTextSecondary)
                                 .padding(.horizontal, 18)
                                 .padding(.vertical, 8)
-                                .background(selectedGroup == group ? Color.gridAccent : Color.clear)
+                                .background(isSelected ? Color.gridAccent : Color.clear)
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule().stroke(
-                                        selectedGroup == group ? Color.clear : Color.gridTextSecondary.opacity(0.3),
+                                        isSelected ? Color.clear : Color.gridTextSecondary.opacity(0.3),
                                         lineWidth: 1
                                     )
                                 )
@@ -39,44 +90,85 @@ struct ExerciseStatsSection: View {
             }
             .padding(.bottom, 12)
 
-            let stats = vm.exerciseStats(for: selectedGroup)
-
-            if stats.isEmpty {
-                Text("この部位のデータがありません")
-                    .font(.gridBody)
-                    .foregroundColor(.gridTextSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
-                    .padding(.horizontal, 24)
-
-            } else if let log = selectedLog,
-                      let item = selectedItem {
-                // ─── 階層3: セット詳細 ───
-                setDetailView(log: log, itemName: item.name)
-
-            } else if let selected = selectedItem,
-                      let stat = stats.first(where: { $0.item.id == selected.id }) {
-                // ─── 階層2: 日付別リスト ───
-                exerciseDetailView(stat: stat)
-
+            if showLatest {
+                // ─── 最新セッション ───
+                if let log = selectedLog, let item = selectedItem {
+                    // 階層3: セット詳細
+                    setDetailView(log: log, itemName: item.name)
+                } else if let selected = selectedItem {
+                    // 階層2: 日付別リスト（全履歴と同じ）
+                    if let stat = vm.exerciseStats(for: selected) {
+                        exerciseDetailView(stat: stat)
+                    }
+                } else {
+                    // 階層1: 最新セッションの種目リスト
+                    latestSessionView
+                }
             } else {
-                // ─── 階層1: 種目一覧 ───
+                // ─── 全履歴（筋肉グループ別）───
+                let stats = vm.exerciseStats(for: selectedGroup)
+
+                if stats.isEmpty {
+                    Text("この部位のデータがありません")
+                        .font(.gridBody)
+                        .foregroundColor(.gridTextSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 32)
+                        .padding(.horizontal, 24)
+
+                } else if let log = selectedLog, let item = selectedItem {
+                    setDetailView(log: log, itemName: item.name)
+
+                } else if let selected = selectedItem,
+                          let stat = stats.first(where: { $0.item.id == selected.id }) {
+                    exerciseDetailView(stat: stat)
+
+                } else {
+                    exerciseListView(stats: stats)
+                }
+            }
+        }
+    }
+
+    // MARK: - 最新セッション 種目一覧
+
+    private var latestSessionView: some View {
+        Group {
+            if let session = latestSession, !latestLogs.isEmpty {
                 ScrollView {
                     VStack(spacing: 2) {
-                        ForEach(stats, id: \.item.id) { stat in
+                        // セッション情報ヘッダー
+                        HStack {
+                            Text(session.dateString)
+                                .font(.gridCaption)
+                                .foregroundColor(.gridTextSecondary)
+                            Text("SESSION #\(session.sessionNumber)")
+                                .font(.gridCaption)
+                                .foregroundColor(.gridTextTertiary)
+                                .kerning(1)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 8)
+
+                        ForEach(latestLogs, id: \.item.id) { pair in
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedItem = stat.item
+                                    selectedItem = pair.item
                                 }
                             } label: {
                                 HStack {
-                                    Text(stat.item.name)
+                                    Text(pair.item.name)
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(.gridTextPrimary)
                                     Spacer()
+                                    Text("\(weightText(pair.log.maxWeight)) kg")
+                                        .font(.gridBody)
+                                        .foregroundColor(.gridTextSecondary)
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 13))
                                         .foregroundColor(.gridTextTertiary)
+                                        .padding(.leading, 4)
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 16)
@@ -90,7 +182,48 @@ struct ExerciseStatsSection: View {
                     }
                     .padding(.top, 4)
                 }
+            } else {
+                Text("トレーニング記録がありません")
+                    .font(.gridBody)
+                    .foregroundColor(.gridTextSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                    .padding(.horizontal, 24)
             }
+        }
+    }
+
+    // MARK: - 全履歴 種目一覧
+
+    private func exerciseListView(stats: [AppViewModel.ExerciseStat]) -> some View {
+        ScrollView {
+            VStack(spacing: 2) {
+                ForEach(stats, id: \.item.id) { stat in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedItem = stat.item
+                        }
+                    } label: {
+                        HStack {
+                            Text(stat.item.name)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.gridTextPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gridTextTertiary)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .background(Color.gridCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 24)
+                }
+                Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
+            }
+            .padding(.top, 4)
         }
     }
 
@@ -190,9 +323,10 @@ struct ExerciseStatsSection: View {
 
     private func setDetailView(log: AppViewModel.ExerciseSessionLog, itemName: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 戻るボタン + 日付
-            backButton(title: log.dateString) {
-                selectedLog = nil
+            // 戻るボタン + 日付 or 種目名（最新モードでは種目名）
+            backButton(title: showLatest ? itemName : log.dateString) {
+                selectedLog  = nil
+                if showLatest { selectedItem = nil }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 16)

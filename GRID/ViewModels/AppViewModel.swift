@@ -136,6 +136,11 @@ class AppViewModel: ObservableObject {
         let recentMonthMax: Double?   // nil = 直近1ヶ月にデータなし
     }
 
+    /// 特定種目の ExerciseStat を返す
+    func exerciseStats(for item: Item) -> ExerciseStat? {
+        exerciseStats(for: item.muscleGroup).first { $0.item.id == item.id }
+    }
+
     /// 種目ごとの MAX 重量（全期間 & 直近1ヶ月）※reps=0 は除外
     func exerciseStats(for group: MuscleGroup) -> [ExerciseStat] {
         let targetItems = items.filter { $0.muscleGroup == group }
