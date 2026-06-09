@@ -9,10 +9,32 @@ struct ItemFormView: View {
 
     @State private var timerTyped    = ""
     @State private var timerHasTyped = false
+    @FocusState private var nameFocused: Bool
     @FocusState private var timerFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
+            // ─── 筋肉グループチップ（上部：キーボードと重ならない）───
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(MuscleGroup.allCases) { group in
+                        Button {
+                            muscleGroup = group
+                        } label: {
+                            Text(group.rawValue)
+                                .font(.gridBody)
+                                .foregroundColor(muscleGroup == group ? .white : .gridTextSecondary)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 8)
+                                .background(muscleGroup == group ? Color.gridAccent : Color.gridCard)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .padding(.bottom, 16)
+
             // Card
             VStack(spacing: 0) {
                 // Name field
@@ -23,6 +45,9 @@ struct ItemFormView: View {
                     TextField("ベンチプレス", text: $name)
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(.gridTextPrimary)
+                        .focused($nameFocused)
+                        .submitLabel(.done)
+                        .onSubmit { nameFocused = false }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
@@ -141,27 +166,15 @@ struct ItemFormView: View {
             .background(Color.gridCard)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .padding(.horizontal, 20)
-
-            // Muscle group chips
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(MuscleGroup.allCases) { group in
-                        Button {
-                            muscleGroup = group
-                        } label: {
-                            Text(group.rawValue)
-                                .font(.gridBody)
-                                .foregroundColor(muscleGroup == group ? .white : .gridTextSecondary)
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 8)
-                                .background(muscleGroup == group ? Color.gridAccent : Color.gridCard)
-                                .clipShape(Capsule())
-                        }
-                    }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                if nameFocused {
+                    Button("完了") { nameFocused = false }
+                        .foregroundColor(.gridAccent)
                 }
-                .padding(.horizontal, 20)
             }
-            .padding(.top, 20)
         }
     }
 

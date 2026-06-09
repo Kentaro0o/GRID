@@ -109,7 +109,7 @@ struct ViewItemView: View {
             EditItemView(item: item).environmentObject(vm)
         }
         .sheet(isPresented: $showNewItem) {
-            NewItemView().environmentObject(vm)
+            NewItemView(initialGroup: selectedGroup).environmentObject(vm)
         }
     }
 

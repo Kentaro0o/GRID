@@ -4,12 +4,17 @@ struct NewItemView: View {
     @EnvironmentObject var vm: AppViewModel
     @Environment(\.dismiss) var dismiss
 
+    var initialGroup: MuscleGroup = .chest
+
     @State private var name             = ""
     @State private var type             = ItemType.freeWeight
     @State private var restTimerSeconds = 120
-    @State private var muscleGroup      = MuscleGroup.chest
+    @State private var muscleGroup: MuscleGroup
 
-    @FocusState private var isAnyFieldFocused: Bool
+    init(initialGroup: MuscleGroup = .chest) {
+        self.initialGroup = initialGroup
+        _muscleGroup = State(initialValue: initialGroup)
+    }
 
     var body: some View {
         ZStack {
@@ -62,13 +67,6 @@ struct NewItemView: View {
                         Spacer().frame(height: 100)
                     }
                 }
-            }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("完了") { isAnyFieldFocused = false }
-                    .foregroundColor(.gridAccent)
             }
         }
     }

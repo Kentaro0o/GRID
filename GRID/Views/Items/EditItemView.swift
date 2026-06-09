@@ -12,8 +12,6 @@ struct EditItemView: View {
     @State private var muscleGroup: MuscleGroup
     @State private var showDeleteConfirm = false
 
-    @FocusState private var isAnyFieldFocused: Bool
-
     init(item: Item) {
         self.item = item
         _name             = State(initialValue: item.name)
@@ -82,13 +80,6 @@ struct EditItemView: View {
                         Spacer().frame(height: 100)
                     }
                 }
-            }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("完了") { isAnyFieldFocused = false }
-                    .foregroundColor(.gridAccent)
             }
         }
         .alert("削除しますか？", isPresented: $showDeleteConfirm) {
