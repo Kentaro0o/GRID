@@ -30,23 +30,25 @@ struct PhotoGridSection: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 2) {
                     ForEach(photos) { photo in
-                        Button {
-                            tappedSessionId = photo.sessionId
-                        } label: {
-                            GeometryReader { geo in
-                                if let img = UIImage(data: photo.imageData) {
-                                    Image(uiImage: img)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: geo.size.width, height: geo.size.width)
-                                        .clipped()
-                                } else {
-                                    Color.gridCard
-                                }
-                            }
+                        Color.clear
                             .aspectRatio(1, contentMode: .fit)
-                        }
-                        .buttonStyle(.plain)
+                            .overlay(
+                                Group {
+                                    if let img = UIImage(data: photo.imageData) {
+                                        Image(uiImage: img)
+                                            .resizable()
+                                            .scaledToFill()
+                                    } else {
+                                        Color.gridCard
+                                    }
+                                }
+                                .clipped()
+                            )
+                            .clipped()
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                tappedSessionId = photo.sessionId
+                            }
                     }
                 }
                 Spacer().frame(height: GRIDLayout.tabBarBottomPadding)
@@ -76,6 +78,9 @@ struct FullScreenPhotoView: View {
     @EnvironmentObject var vm: AppViewModel
     @Environment(\.dismiss) var dismiss
     @State private var pageIndex: Int = 0
+    @State private var showShareSheet = false
+
+    private var currentPhoto: AppViewModel.PhotoEntry? { photos[safe: pageIndex] }
 
     var body: some View {
         ZStack {
@@ -95,13 +100,29 @@ struct FullScreenPhotoView: View {
 
             VStack {
                 HStack {
+                    // 共有
+                    Button {
+                        showShareSheet = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(Circle())
+                    }
+                    .padding(.leading, 20)
+
+                    Spacer()
+
                     if photos.count > 1 {
                         Text("\(pageIndex + 1) / \(photos.count)")
                             .font(.gridCaption)
                             .foregroundColor(.white.opacity(0.8))
-                            .padding(.leading, 20)
                     }
+
                     Spacer()
+
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
@@ -117,12 +138,13 @@ struct FullScreenPhotoView: View {
                 Spacer()
 
                 HStack {
-                    if let photo = photos[safe: pageIndex] {
+                    if let photo = currentPhoto {
                         Text(dateString(photo.date))
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white.opacity(0.8))
                     }
                     Spacer()
+                    // このセッションへ
                     Button {
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -144,6 +166,11 @@ struct FullScreenPhotoView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let photo = currentPhoto, let img = UIImage(data: photo.imageData) {
+                ShareSheet(items: [img])
             }
         }
     }

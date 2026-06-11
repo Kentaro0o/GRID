@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Photos
 
 struct PhotoViewerView: View {
     @Environment(\.dismiss) var dismiss
@@ -18,6 +19,7 @@ struct PhotoViewerView: View {
     @State private var cameraReplaceData: Data? = nil
     @State private var cameraAddData: Data? = nil
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
+    @State private var showShareSheet = false
 
     init(photosData: Binding<[Data]>, initialIndex: Int = 0) {
         _photosData = photosData
@@ -46,11 +48,12 @@ struct PhotoViewerView: View {
             VStack {
                 // 上部バー
                 HStack {
+                    // 共有
                     Button {
-                        showDeleteConfirm = true
+                        showShareSheet = true
                     } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 16))
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15))
                             .foregroundColor(.white)
                             .frame(width: 36, height: 36)
                             .background(Color.white.opacity(0.2))
@@ -104,6 +107,18 @@ struct PhotoViewerView: View {
                         .padding(.vertical, 14)
                         .background(Color.white.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+
+                    // 削除
+                    Button {
+                        showDeleteConfirm = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16))
+                            .foregroundColor(.red)
+                            .frame(width: 50, height: 50)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
                     // 追加
@@ -173,6 +188,12 @@ struct PhotoViewerView: View {
             guard let data else { return }
             addPhoto(data)
             cameraAddData = nil
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if photosData.indices.contains(currentPage),
+               let img = UIImage(data: photosData[currentPage]) {
+                ShareSheet(items: [img])
+            }
         }
         .alert("この写真を削除しますか？", isPresented: $showDeleteConfirm) {
             Button("削除", role: .destructive) {

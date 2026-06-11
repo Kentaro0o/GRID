@@ -472,7 +472,8 @@ struct SessionTimelineView: View {
                             .padding(.vertical, 4)
                             .background(Color.black.opacity(0.5))
                             .clipShape(Capsule())
-                            .padding(8)
+                            .padding(10)
+                            .padding(.top, 10)
                     }
                 }
             } else {

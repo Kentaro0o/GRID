@@ -6,6 +6,9 @@ struct SystemView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var exportURL: URL? = nil
     @State private var showShareSheet = false
+    @State private var photoExportItems: [UIImage] = []
+    @State private var showPhotoExportSheet = false
+    @State private var isExportingPhotos = false
     @State private var showClearConfirm = false
     @State private var showDeleteInput  = false
     @State private var deleteInputText  = ""
@@ -103,6 +106,20 @@ struct SystemView: View {
                     }
                     
 
+                    // 写真エクスポート
+                    sectionCard(title: "写真エクスポート") {
+                        VStack(spacing: 0) {
+                            let totalPhotos = vm.sessions.reduce(0) { $0 + $1.photosData.count }
+                            menuRow(
+                                icon: "photo.on.rectangle.angled",
+                                label: "すべての写真を書き出す",
+                                sublabel: "アプリ内の写真 \(totalPhotos)枚を書き出す"
+                            ) {
+                                exportPhotos()
+                            }
+                        }
+                    }
+
                     // Data section
                     sectionCard(title: "データ管理") {
                         VStack(spacing: 0) {
@@ -194,6 +211,9 @@ struct SystemView: View {
                 ShareSheet(url: url)
             }
         }
+        .sheet(isPresented: $showPhotoExportSheet) {
+            ShareSheet(items: photoExportItems)
+        }
     }
 
     // MARK: - Components
@@ -258,6 +278,16 @@ struct SystemView: View {
 
     // MARK: - Actions
 
+    private func exportPhotos() {
+        let images = vm.sessions
+            .sorted { $0.date < $1.date }
+            .flatMap { $0.photosData }
+            .compactMap { UIImage(data: $0) }
+        guard !images.isEmpty else { return }
+        photoExportItems = images
+        showPhotoExportSheet = true
+    }
+
     private func exportCSV() {
         if let url = CSVExporter.export(sessions: vm.sessions, items: vm.items) {
             exportURL = url
@@ -275,10 +305,13 @@ struct SystemView: View {
 // MARK: - Share Sheet
 
 struct ShareSheet: UIViewControllerRepresentable {
-    let url: URL
+    let items: [Any]
+
+    init(items: [Any]) { self.items = items }
+    init(url: URL) { self.items = [url] }
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
