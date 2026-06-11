@@ -4,19 +4,35 @@ import LocalAuthentication
 
 struct SystemView: View {
     @EnvironmentObject var vm: AppViewModel
-    @State private var exportURL: URL? = nil
-    @State private var showShareSheet = false
-    @State private var photoExportItems: [UIImage] = []
-    @State private var showPhotoExportSheet = false
-    @State private var isExportingPhotos = false
-    @State private var showClearConfirm = false
-    @State private var showDeleteInput  = false
-    @State private var deleteInputText  = ""
+    @State private var sharePayload: SharePayload? = nil
+    @State private var showExportOptions = false
+    @State private var pendingExportAfterDismiss = false
+    @State private var exportIncludeTraining = true
+    @State private var exportIncludeWeight = true
+    @State private var showDeleteMenu = false
+    @State private var deleteTarget: DeleteTarget? = nil
+    @State private var showDeleteConfirm = false
+    @State private var showDeleteInput = false
+    @State private var deleteInputText = ""
+    @State private var deleteConfirmWord = ""
     @State private var defaultRestTimer = 120
     @AppStorage("saveCameraPhotoToRoll") private var saveCameraPhotoToRoll = true
     @AppStorage("timerSoundEnabled") private var timerSoundEnabled = true
 
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+
+    enum DeleteTarget {
+        case training, weight, photos, all
+        var label: String {
+            switch self {
+            case .training: return "トレーニング記録"
+            case .weight:   return "体重記録"
+            case .photos:   return "写真"
+            case .all:      return "全データ"
+            }
+        }
+        var confirmWord: String { "DELETE" }
+    }
 
     var body: some View {
         ZStack {
@@ -24,7 +40,6 @@ struct SystemView: View {
 
             ScrollView {
                 VStack(spacing: 0) {
-                    // Header
                     HStack {
                         Text("SYSTEM")
                             .font(.system(size: 32, weight: .black))
@@ -35,8 +50,7 @@ struct SystemView: View {
                     .padding(.top, GRIDLayout.headerTopPadding)
                     .padding(.bottom, 32)
 
-
-                    // Default rest timer
+                    // デフォルト レストタイマー
                     sectionCard(title: "デフォルト レストタイマー") {
                         HStack(spacing: 24) {
                             Button {
@@ -61,7 +75,7 @@ struct SystemView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 20)
                     }
-                    
+
                     // タイマー音
                     sectionCard(title: "タイマー音") {
                         HStack(spacing: 12) {
@@ -73,7 +87,6 @@ struct SystemView: View {
                                     .font(.gridCaption)
                                     .foregroundColor(.gridTextSecondary)
                                     .padding(.top, 1)
-                            
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("", isOn: $timerSoundEnabled)
@@ -84,7 +97,7 @@ struct SystemView: View {
                         .padding(.vertical, 16)
                     }
 
-                    // Camera setting
+                    // カメラ設定
                     sectionCard(title: "カメラ設定") {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -104,12 +117,22 @@ struct SystemView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
                     }
-                    
 
-                    // 写真エクスポート
-                    sectionCard(title: "写真エクスポート") {
+                    // データ管理
+                    sectionCard(title: "データ管理") {
                         VStack(spacing: 0) {
                             let totalPhotos = vm.sessions.reduce(0) { $0 + $1.photosData.count }
+
+                            menuRow(
+                                icon: "square.and.arrow.up",
+                                label: "ログを書き出す",
+                                sublabel: "含める情報を選んでCSVで書き出す"
+                            ) {
+                                showExportOptions = true
+                            }
+
+                            Divider().background(Color.gridCardInner).padding(.horizontal, 20)
+
                             menuRow(
                                 icon: "photo.on.rectangle.angled",
                                 label: "すべての写真を書き出す",
@@ -117,46 +140,26 @@ struct SystemView: View {
                             ) {
                                 exportPhotos()
                             }
-                        }
-                    }
 
-                    // Data section
-                    sectionCard(title: "データ管理") {
-                        VStack(spacing: 0) {
-                            menuRow(
-                                icon: "square.and.arrow.up",
-                                label: "CSVエクスポート",
-                                sublabel: "トレーニングログをCSVで書き出す"
-                            ) {
-                                exportCSV()
-                            }
                             Divider().background(Color.gridCardInner).padding(.horizontal, 20)
-                            menuRow(
-                                icon: "tablecells",
-                                label: "Excelエクスポート",
-                                sublabel: "CSVはExcelで開くことができます"
-                            ) {
-                                exportCSV()
-                            }
-                            Divider().background(Color.gridCardInner).padding(.horizontal, 20)
+
                             menuRow(
                                 icon: "trash",
-                                label: "全データを削除",
-                                sublabel: "すべてのセッションデータを削除します",
+                                label: "データを削除",
+                                sublabel: "削除する対象を選ぶ",
                                 isDestructive: true
                             ) {
-                                deleteInputText = ""
-                                showDeleteInput = true
+                                showDeleteMenu = true
                             }
                         }
                     }
 
-                    // About section
+                    // このアプリについて
                     sectionCard(title: "このアプリについて") {
                         infoRow(label: "バージョン", value: appVersion)
                     }
 
-                    // Privacy note
+                    // プライバシー
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
                             Image(systemName: "lock.shield")
@@ -180,40 +183,130 @@ struct SystemView: View {
                 }
             }
         }
-        .alert("「DELETE」と入力してください", isPresented: $showDeleteInput) {
-            TextField("DELETE", text: $deleteInputText)
+        // ログを書き出す — 選択シート（dismiss後にCSVエクスポート実行）
+        .sheet(isPresented: $showExportOptions, onDismiss: {
+            if pendingExportAfterDismiss {
+                pendingExportAfterDismiss = false
+                exportCSV(training: exportIncludeTraining, weight: exportIncludeWeight)
+            }
+        }) {
+            exportOptionsSheet
+        }
+        // 共有シート（CSV・写真共通）
+        .sheet(item: $sharePayload) { payload in
+            ShareSheet(items: payload.items)
+        }
+        // データを削除 — 対象選択
+        .confirmationDialog("削除する対象を選んでください", isPresented: $showDeleteMenu, titleVisibility: .visible) {
+            Button("トレーニング記録を削除", role: .destructive) {
+                deleteTarget = .training; deleteConfirmWord = DeleteTarget.training.confirmWord; deleteInputText = ""; showDeleteInput = true
+            }
+            Button("体重記録を削除", role: .destructive) {
+                deleteTarget = .weight; deleteConfirmWord = DeleteTarget.weight.confirmWord; deleteInputText = ""; showDeleteInput = true
+            }
+            Button("写真を削除", role: .destructive) {
+                deleteTarget = .photos; deleteConfirmWord = DeleteTarget.photos.confirmWord; deleteInputText = ""; showDeleteInput = true
+            }
+            Button("全データを削除", role: .destructive) {
+                deleteTarget = .all; deleteConfirmWord = DeleteTarget.all.confirmWord; deleteInputText = ""; showDeleteInput = true
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        // 削除確認入力
+        .alert("「\(deleteConfirmWord)」と入力してください", isPresented: $showDeleteInput) {
+            TextField(deleteConfirmWord, text: $deleteInputText)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.characters)
             Button("削除", role: .destructive) {
-                if deleteInputText == "DELETE" {
-                    showClearConfirm = true
-                }
+                if deleteInputText == deleteConfirmWord { showDeleteConfirm = true }
                 deleteInputText = ""
             }
-            Button("キャンセル", role: .cancel) {
-                deleteInputText = ""
-            }
+            Button("キャンセル", role: .cancel) { deleteInputText = "" }
         } message: {
-            Text("全データを削除するには「DELETE」と入力してください")
-        }
-        .alert("本当に削除しますか？", isPresented: $showClearConfirm) {
-            Button("削除", role: .destructive) {
-                UserDefaults.standard.removeObject(forKey: "grid_sessions")
-                vm.sessions = []
-                _ = vm.ensureTodaySession()
+            if let target = deleteTarget {
+                Text("\(target.label)を削除するには「\(deleteConfirmWord)」と入力してください")
             }
+        }
+        // 削除確認
+        .alert("削除しますか？", isPresented: $showDeleteConfirm) {
+            Button("削除", role: .destructive) { performDelete() }
             Button("キャンセル", role: .cancel) {}
         } message: {
-            Text("すべてのセッションデータが削除されます。この操作は取り消せません。")
-        }
-        .sheet(isPresented: $showShareSheet) {
-            if let url = exportURL {
-                ShareSheet(url: url)
+            if let target = deleteTarget {
+                Text("\(target.label)を削除します。この操作は取り消せません。")
             }
         }
-        .sheet(isPresented: $showPhotoExportSheet) {
-            ShareSheet(items: photoExportItems)
+    }
+
+    // MARK: - ログ書き出しシート
+
+    private var exportOptionsSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.gridBg.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    VStack(spacing: 0) {
+                        Text("含める情報")
+                            .font(.gridSmall)
+                            .foregroundColor(.gridTextSecondary)
+                            .kerning(1.2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
+
+                        toggleRow(label: "トレーニング記録", isOn: $exportIncludeTraining)
+                        Divider().background(Color.gridCardInner).padding(.horizontal, 20)
+                        toggleRow(label: "体重", isOn: $exportIncludeWeight)
+                    }
+                    .background(Color.gridCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 24)
+
+                    Spacer()
+
+                    Button {
+                        pendingExportAfterDismiss = true
+                        showExportOptions = false
+                    } label: {
+                        Text("書き出す")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(exportIncludeTraining || exportIncludeWeight ? .white : .gridTextTertiary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(exportIncludeTraining || exportIncludeWeight ? Color.gridAccent : Color.gridCard)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .disabled(!exportIncludeTraining && !exportIncludeWeight)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 48)
+                }
+            }
+            .navigationTitle("ログを書き出す")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { showExportOptions = false }
+                        .foregroundColor(.gridAccent)
+                }
+            }
         }
+        .presentationDetents([.medium])
+    }
+
+    private func toggleRow(label: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(label)
+                .font(.gridBody)
+                .foregroundColor(.gridTextPrimary)
+            Spacer()
+            Toggle("", isOn: isOn)
+                .tint(.gridAccent)
+                .fixedSize()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
     }
 
     // MARK: - Components
@@ -227,7 +320,6 @@ struct SystemView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
-
             content()
         }
         .background(Color.gridCard)
@@ -278,31 +370,61 @@ struct SystemView: View {
 
     // MARK: - Actions
 
+    private func exportCSV(training: Bool, weight: Bool) {
+        guard let url = CSVExporter.export(sessions: vm.sessions, items: vm.items,
+                                           includeTraining: training, includeWeight: weight) else { return }
+        sharePayload = SharePayload(items: [url])
+    }
+
     private func exportPhotos() {
         let images = vm.sessions
             .sorted { $0.date < $1.date }
             .flatMap { $0.photosData }
             .compactMap { UIImage(data: $0) }
         guard !images.isEmpty else { return }
-        photoExportItems = images
-        showPhotoExportSheet = true
+        sharePayload = SharePayload(items: images)
     }
 
-    private func exportCSV() {
-        if let url = CSVExporter.export(sessions: vm.sessions, items: vm.items) {
-            exportURL = url
-            showShareSheet = true
+    private func performDelete() {
+        guard let target = deleteTarget else { return }
+        switch target {
+        case .training:
+            vm.sessions = vm.sessions.map { s in
+                var s = s; s.entries = []; return s
+            }
+            vm.sessions.forEach { vm.updateSession($0) }
+        case .weight:
+            vm.sessions = vm.sessions.map { s in
+                var s = s; s.bodyWeight = nil; return s
+            }
+            vm.sessions.forEach { vm.updateSession($0) }
+        case .photos:
+            vm.sessions = vm.sessions.map { s in
+                var s = s; s.photosData = []; return s
+            }
+            vm.sessions.forEach { vm.updateSession($0) }
+        case .all:
+            UserDefaults.standard.removeObject(forKey: "grid_sessions")
+            vm.sessions = []
+            _ = vm.ensureTodaySession()
         }
+        deleteTarget = nil
     }
 
     private func timerString(_ seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
+        let m = seconds / 60; let s = seconds % 60
         return String(format: "%d:%02d", m, s)
     }
 }
 
-// MARK: - Share Sheet
+// MARK: - SharePayload
+
+struct SharePayload: Identifiable {
+    let id = UUID()
+    let items: [Any]
+}
+
+// MARK: - ShareSheet
 
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
